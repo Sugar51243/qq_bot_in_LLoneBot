@@ -1,31 +1,46 @@
+
+# == 主文件 ==
+
+#此文件为OneBot11-小生物的主涵数文件
+#应用环境为LL-Bot v2.4.4
+
+#如果不清楚具体作用，除配置外，请不要修改任何参数代码
+#需要更多信息调试 => 请调整testMode参数为True
+
+
+#引用库
+#  ==> pip自动下载缺失的库
 import src.messageHandler
 import asyncio, os, traceback
+from src.init_config import load_onebot_config
+from src.loger import log
 try:
     from OneBotConnecter import OneBot
 except:
     os.system("pip install OneBotConnecter")
     exec(f"from OneBotConnecter import OneBot")
-try:
-    from config_io import Config
-except:
-    os.system("pip install config-io")
-    exec(f"from config_io import Config")
+
+#清理屏幕信息
 os.system("cls")
 
+#主涵数
 async def main():
-
-    localtion = os.path.dirname(__file__)
-    config = Config.load_from_file("data/config.yaml")
+    localtion = os.path.dirname(__file__) #获取文件位置
+    #加载配置
+    config = load_onebot_config("data/config.yaml") #配置文件默认位于 data/config.yaml
     uri = config["uri"]
     owner = config["owner"]
     botName = config["botName"]
-    #botFunction = config["botFunction"]
-    bot = OneBot(uri=uri, owner=owner, botName=botName, localtion=localtion)
-    await bot.run(on_message=src.messageHandler.onMessage)
+    #创建连接
+    bot = OneBot(uri=uri, owner=owner, botName=botName, localtion=localtion, testMode=False)
+    await bot.non_async_run(on_message=src.messageHandler.onMessage) #处理信息 (相关涵数位于src/messageHandler.py)
 
+#运行
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except:
-        traceback.print_exc()
+    except Exception as e:
+        tb = e.__traceback__
+        formatted_tb = ''.join(traceback.format_tb(tb))
+        log(formatted_tb)
         os.system("pause")

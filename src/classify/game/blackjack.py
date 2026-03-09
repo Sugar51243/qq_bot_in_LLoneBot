@@ -1,4 +1,5 @@
 import random
+from src.loger import log
 
 class card:
     suits: str
@@ -86,7 +87,7 @@ class blackjack:
     def stop_player(self, user_id: int):
         if self.started and user_id in self.players and user_id not in self.stopped_players:
             self.stopped_players.add(user_id)
-            print(self.stopped_players)
+            log(self.stopped_players)
     
     def returnThisRoundInfo(self):
         info = f"Round {self.round_id} Info:"
@@ -99,8 +100,8 @@ class blackjack:
     def next_player(self):
         player_ids = list(self.players.keys())
         current_index = player_ids.index(self.this_round_player)
-        print(self.stopped_players)
-        print(self.players)
+        log(self.stopped_players)
+        log(self.players)
         if len(self.stopped_players) >= len(self.players):
             info = "所有玩家均已停牌，游戏结束!\n"
             info += self.returnThisRoundInfo()
