@@ -35,5 +35,6 @@ def log(data: str = "", needPrint=True):
     #文件写入
     if not os.path.exists(path):
         os.makedirs(path)
-    with open(f'{path}/{current_time}.log', 'a', encoding="utf-8") as file:
-        file.write(f"{data}\n")
+    file = open(f'{path}/{current_time}.log', 'a', encoding="utf-8")
+    file.write(f"{data}\n")
+    file.close()

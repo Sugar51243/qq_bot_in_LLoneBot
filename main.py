@@ -10,15 +10,14 @@
 
 #引用库
 #  ==> pip自动下载缺失的库
-import src.messageHandler
+# type: ignore
 import asyncio, os, traceback
-from src.init_config import load_onebot_config
-from src.loger import log
-try:
-    from OneBotConnecter import OneBot
-except:
-    os.system("pip install OneBotConnecter")
-    exec(f"from OneBotConnecter import OneBot")
+import src.messageHandler as messageHandler
+import src.config as config
+import src.loger as loger
+from src.importer import import_package
+exec(import_package("OneBot", package_from="OneBotConnecter"))
+
 
 #清理屏幕信息
 os.system("cls")
@@ -27,13 +26,13 @@ os.system("cls")
 async def main():
     localtion = os.path.dirname(__file__) #获取文件位置
     #加载配置
-    config = load_onebot_config("data/config.yaml") #配置文件默认位于 data/config.yaml
-    uri = config["uri"]
-    owner = config["owner"]
-    botName = config["botName"]
+    bot_config = config.load_config("data/config.yaml") #配置文件默认位于 data/config.yaml
+    uri = bot_config["uri"]
+    owner = bot_config["owner"]
+    botName = bot_config["botName"]
     #创建连接
     bot = OneBot(uri=uri, owner=owner, botName=botName, localtion=localtion, testMode=False)
-    await bot.non_async_run(on_message=src.messageHandler.onMessage) #处理信息 (相关涵数位于src/messageHandler.py)
+    await bot.non_async_run(on_message=messageHandler.onMessage) #处理信息 (相关涵数位于src/messageHandler.py)
 
 #运行
 if __name__ == "__main__":
@@ -42,5 +41,4 @@ if __name__ == "__main__":
     except Exception as e:
         tb = e.__traceback__
         formatted_tb = ''.join(traceback.format_tb(tb))
-        log(formatted_tb)
-        os.system("pause")
+        loger.log(formatted_tb)
