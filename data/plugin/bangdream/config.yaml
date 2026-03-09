@@ -1,0 +1,9 @@
+backup_tsugu_uri: http://127.0.0.1:3000
+compress: true
+key_set_path: data/plugin/bangdream/keyset.json
+music_temp_path: data/plugin/bangdream/song
+time_out: 20
+tsugu_uri: http://tsugubot.com:8080
+useEasyBG: false
+use_uri: tsugu_uri
+user_acc_path: data/plugin/bangdream/userBinding.json
