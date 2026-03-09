@@ -1,18 +1,17 @@
 import os
 from io import BytesIO
 import numpy as np
-try:
-    from OneBotConnecter.MessageType import MessageChain, ImageMessage, RecordMessage
+try: from OneBotConnecter.MessageType import MessageChain, ImageMessage, RecordMessage
 except:
     os.system("pip install OneBotConnecter")
     exec("from OneBotConnecter.MessageType import MessageChain, ImageMessage, RecordMessage")
-try:
+try: #import tsugu_api
     from tsugu_api import cutoff_detail, cutoff_all, cutoff_list_of_recent_event
     from tsugu_api import search_song, song_chart, song_meta
     from tsugu_api import search_card, search_player, search_character
     from tsugu_api import event_stage, search_event
     from tsugu_api import search_gacha, gacha_simulate
-    from tsugu_api import room_list, query_room_number, submit_room_number, station_query_all_room
+    from tsugu_api import room_list, query_room_number, submit_room_number, station_query_all_room, get_user_data
 except:
     os.system("pip install tsugu-api-python")
     exec("from tsugu_api import cutoff_detail, cutoff_all, cutoff_list_of_recent_event")
@@ -25,13 +24,15 @@ try: from bestdori.render import render
 except:
     os.system("pip install bestdori-render")
     exec("from bestdori.render import render")
-lib_list = ["requests", "json", "traceback", "eyed3", "base64", "random", "re", "io"]
-for lib in lib_list:
-    try:
-        exec(f"import {lib}")
-    except:
-        os.system(f"pip install {lib}")
-        exec(f"import {lib}")
+try: import requests, json, traceback, eyed3, base64, random, re, io
+except:
+    lib_list = ["requests", "json", "traceback", "eyed3", "base64", "random", "re", "io"]
+    for lib in lib_list:
+        try:
+            exec(f"import {lib}")
+        except:
+            os.system(f"pip install {lib}")
+            exec(f"import {lib}")
 try: from PIL import Image, ImageDraw
 except:
     os.system("pip install pillow")
@@ -40,6 +41,7 @@ try: from config_io import Config
 except:
     os.system("pip install config-io")
     exec("from config_io import Config")
+from src.loger import log
 
 guess_list = {}
 
@@ -63,12 +65,11 @@ async def bangdreamMode(bot, msg, raw_message, be_at):
             data = requestData(url)
             chartDetail = data["post"]
             await sreachSelfMakeChart(bot, msg, chartDetail, charID)
-            return
         except Exception as e:
-            message = MessageChain([" 自制谱面ID参数错误 "])
-            await bot.reply_to_message(msg, message)
-            return
-        await sreachChart(bot, msg, command, be_at)
+            log(f"Get Exception:\n{e}")
+            message = MessageChain([" 自制谱面ID参数错误"])
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
         return
     # 官谱查谱
     if raw_message[0:3] == "查官谱":
@@ -86,7 +87,7 @@ async def bangdreamMode(bot, msg, raw_message, be_at):
         await sreachOfficalMakeChart(bot, msg, parameters, difficulty)
         return
     # 随机查谱
-    if raw_message == "随机查谱":
+    if raw_message in ["随机查谱", "随机谱面"]:
         await randomSreachChart(bot, msg)
         return
     # 查曲
@@ -102,7 +103,8 @@ async def bangdreamMode(bot, msg, raw_message, be_at):
         raw_message = raw_message[3:].strip()
         if len(raw_message) <= 0 or not raw_message.isdigit():
             message = MessageChain(["\n参数缺失,可用参数:\n", "-------------------------\n", "[卡池ID]\n", "例:查卡池 1\n", "-------------------------\n"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             return
         if raw_message.isdigit():
             await self_search_gacha(bot, msg, raw_message, be_at)
@@ -111,7 +113,8 @@ async def bangdreamMode(bot, msg, raw_message, be_at):
     if '查卡' in raw_message and "947" in raw_message:
         if (str(msg["sender"]["user_id"]) not in bot.owner) or (random.randint(1,100) > (50)):
             message = MessageChain([" 不许查!!!"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             return
     # 查卡面
     if raw_message[0:3] == "查卡面":
@@ -123,7 +126,8 @@ async def bangdreamMode(bot, msg, raw_message, be_at):
             try:
                 message.add(ImageMessage(getImage(data,True)))
             except: pass
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
         return
     # 查卡
     if raw_message[0:2] == "查卡":
@@ -215,7 +219,8 @@ async def bangdreamMode(bot, msg, raw_message, be_at):
             targetID = re.findall(r'(\d+)', raw_message)
             await get_play_info(bot, msg, targetID[0], 0)
             return
-        await bot.reply_to_message(bot, msg, MessageChain(["未发现参数"]))
+        callback = await bot.reply_to_message(bot, msg, MessageChain(["未发现参数"]))
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     # 查试炼
     if raw_message[0:3] == "查试炼":
@@ -235,12 +240,16 @@ async def self_room_list(bot, msg, raw_message, be_at):
         data = room_list(data)
         message = MessageChain(["\n"])
         message.add(ImageMessage(f"base64://{data[0]["string"]}"))
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     except Exception as e:
         message = MessageChain(["\n茨菇后台连接失败"])
-        await bot.reply_to_message(msg, message)
-        traceback.print_exc()
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
+        tb = e.__traceback__
+        formatted_tb = ''.join(traceback.format_tb(tb))
+        log(formatted_tb)
         return
 
 #查茨菇
@@ -252,24 +261,32 @@ async def call_tsugu(bot, msg, callback):
                 message = MessageChain(["\n"])
                 message.add(ImageMessage(f"base64://{data[0]["string"]}"))
                 callback = await bot.reply_to_message(msg, message)
+                log(f"{callback}", needPrint=(bot.testMode))
                 return
             raise SyntaxError()
         except SyntaxError:
             message = MessageChain(["\n"])
-            message.add(MessageChain([card[0]["string"]]))
-            await bot.reply_to_message(msg, message)
+            message.add(MessageChain([data[0]["string"]]))
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             return
         except Exception:
             message = MessageChain(["\n"])
             message.add(MessageChain("茨菇返回数据处理出现问题"))
-            await bot.reply_to_message(msg, message)
-            traceback.print_exc()
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
+            tb = e.__traceback__
+            formatted_tb = ''.join(traceback.format_tb(tb))
+            log(formatted_tb)
             return
     except Exception as e:
         message = MessageChain(["\n"])
         message.add(MessageChain(["茨菇后台连接失败"]))
-        await bot.reply_to_message(msg, message)
-        traceback.print_exc()
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
+        tb = e.__traceback__
+        formatted_tb = ''.join(traceback.format_tb(tb))
+        log(formatted_tb)
         return
 
 #查卡池
@@ -302,12 +319,14 @@ async def self_gacha_simulate(bot, msg, raw_message, be_at):
     parameters = raw_message.split(" ")
     if len(parameters) < 2:
         message = MessageChain(["\n参数缺失"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     [id, time] = parameters
     if id.isdigit() == False or time.isdigit() == False:
         message = MessageChain(["\n参数错误"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     function = lambda: gacha_simulate(server, time, id)
     await call_tsugu(bot, msg, callback = function)
@@ -335,7 +354,8 @@ async def sreachChart(bot, msg, raw_message, be_at):
             "3. 难度并非过滤器参数\n",
             "4. 此功能为搜谱，并非搜曲\n"
             ])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     #自制
     try:
@@ -388,8 +408,12 @@ async def sreachSelfMakeChart(bot, msg, chartData, charID):
                 bpm[1] = nodes["bpm"]
         else:
             if nodes["type"] == "Slide":
-                n+=len(nodes["connections"])
-            else: n+=1
+                for node in nodes["connections"]:
+                    try:
+                        node["hidden"]
+                    except: n+=1
+            else:
+                n+=1
     if bpm[0] == bpm[1]:
         bpm = f"{bpm[0]}"
     else:
@@ -460,8 +484,9 @@ async def sreachSelfMakeChart(bot, msg, chartData, charID):
     #四级信息 ( 谱面图片 )
     message.add(MessageChain(["--------------------\n"]))
     imageURL = renderingChart(charData= chart, charID= id, server= server, difficult= difficult)
-    message.add(MessageChain([ImageMessage(f"file://C:/Users/Administrator/Desktop/bot/OneBot-General/{imageURL}")]))
-    await bot.reply_to_message(msg, message)
+    message.add(MessageChain([ImageMessage(f"file://{bot.localtion}/{imageURL}")]))
+    callback = await bot.reply_to_message(msg, message)
+    log(f"{callback}", needPrint=(bot.testMode))
 #官谱
 async def sreachOfficalMakeChart(bot, msg, parameters: list[str], difficulty: int):
     song_url = "https://bestdori.com//api/songs/all.7.json"
@@ -491,7 +516,8 @@ async def sreachOfficalMakeChart(bot, msg, parameters: list[str], difficulty: in
                 while song_list[songID]['musicTitle'][serverid] == None:
                     serverid += 1
                 message.add(MessageChain([f"\n{songID}. {song_list[songID]['musicTitle'][serverid]}"]))
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
         return
     #茨菇查谱
     await returnOfficalMakeChart(bot, msg, parameters[0], song_list, difficulty)
@@ -536,7 +562,8 @@ async def add_key_word_for_song(bot, msg, raw_message, be_at):
     #写入关键词本
     sreachKey.dump_to_file(keysetPath)
     message = MessageChain([f" 已为谱面ID [{id}] 新增关键词 {keySet} "])
-    await bot.reply_to_message(msg, message)
+    callback = await bot.reply_to_message(msg, message)
+    log(f"{callback}", needPrint=(bot.testMode))
 
 def requestData(url: str):
     #try catch expeted: ( Network Exception(s) |  JSONDecode Exception(s) )
@@ -547,26 +574,32 @@ def requestData(url: str):
         data:dict = response.json()
     except Exception as e:
         #Error message
-        print("[request-from-api: Error]: Data request error from: " + url)
-        print("[request-from-api: Error]: Error details belowe:")
-        print("[request-from-api: Error]: " + str(e))
+        log("[request-from-api: Error]: Data request error from: " + url)
+        log("[request-from-api: Error]: Error details belowe:")
+        log("[request-from-api: Error]: " + str(e))
         #return the error
         raise e
     #return
     return data
 #谱面渲染至图片 - bestdori-render
 def renderingChart(charData: list, charID: str | int, server: str, difficult = "expert"):
-    #渲染
-    image = render(charData)
-    #文件名称: -> charID | charID-difficult, png format
-    if server == "Bandori":
-        imageURL: str = f"data/classify/bangdream/char/{charID}-{difficult}.png"
-    else:
-        imageURL: str = f"data/classify/bangdream/char/{charID}.png"
-    #储存文件
-    image.save(imageURL)
-    #返回文件地址
-    return imageURL
+    try:
+        #渲染
+        image = render(charData)
+        #文件名称: -> charID | charID-difficult, png format
+        if server == "Bandori":
+            imageURL: str = f"data/classify/bangdream/char/{charID}-{difficult}.png"
+        else:
+            imageURL: str = f"data/classify/bangdream/char/{charID}.png"
+        #储存文件
+        image.save(imageURL)
+        #返回文件地址
+        return imageURL
+    except Exception as e:
+        log("Get Exception")
+        log(e)
+        return None
+
 #歌名模式搜索
 def sreachFromNameMode(song_list, parameters: list[str]):
     #歌名模式
@@ -798,7 +831,8 @@ async def randomSreachCard(bot, msg):
         data = requestData(url)
     except:
         message = MessageChain(["服务器网络连接出错"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     index = list(data.keys())
     idx = random.randint(0, len(index)-1)
@@ -814,7 +848,8 @@ async def randomGetCard(bot, msg):
         data = requestData(url)
     except:
         message = MessageChain(["服务器网络连接出错"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     index = list(data.keys())
     idx = random.randint(0, len(index)-1)
@@ -826,14 +861,16 @@ async def randomGetCard(bot, msg):
         data = requestData(url)
     except:
         message = MessageChain(["服务器网络连接出错"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     train = False
     if data['rarity']>=3:
         if random.randint(1, 100) <= 50: train = True
         else: train = False
     message.add(ImageMessage(getImage(data,train)))
-    await bot.reply_to_message(msg, message)
+    callback = await bot.reply_to_message(msg, message)
+    log(f"{callback}", needPrint=(bot.testMode))
 #从bestdori拉取卡面图片
 def getImage(data, train):
     res = data['resourceSetName']
@@ -926,7 +963,8 @@ async def check_player_info(bot, msg, raw_message, be_at):
         raise Exception()
     except:
         message = MessageChain(["参数错误"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
 #茨菇查玩家
 async def self_search_player(bot, msg, player_id, server):
     playerID = int(player_id)
@@ -944,7 +982,8 @@ async def get_play_info(bot, msg, user_id, id):
         user = users[str(user_id)][id]
     except:
         message = MessageChain(["无绑定记录"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     #查玩家资料
     await self_search_player(bot, msg, user["acc"], user["server"])
@@ -974,7 +1013,8 @@ async def bing_user(bot, msg, raw_message, be_at):
                 for savedData in data:
                     if player_id == savedData["acc"] and server == savedData["server"]:
                         message = MessageChain(["账号已存在，请勿重复储存"])
-                        await bot.reply_to_message(msg, message)
+                        callback = await bot.reply_to_message(msg, message)
+                        log(f"{callback}", needPrint=(bot.testMode))
                         return
                 #更新
                 data.append({"acc":player_id, "server": server})
@@ -983,21 +1023,26 @@ async def bing_user(bot, msg, raw_message, be_at):
                 users.dump_to_file("data/classify/bangdream/userBinding.json")
                 #反馈
                 message = MessageChain(["账号储存成功"])
-                await bot.reply_to_message(msg, message)
+                callback = await bot.reply_to_message(msg, message)
+                log(f"{callback}", needPrint=(bot.testMode))
                 await checkUserBinded(bot, msg)
                 return
             else:
-                await bot.reply_to_message(msg, MessageChain(["账号不存在"]))
-                print(data["data"])
+                callback = await bot.reply_to_message(msg, MessageChain(["账号不存在"]))
+                log(f"{callback}", needPrint=(bot.testMode))
+                log(data["data"])
                 if len(str(data["data"]))<500:
-                    await bot.send_private_msg(bot.owner[0], MessageChain([str(data["data"])]))
+                    callback = await bot.send_private_msg(bot.owner[0], MessageChain([str(data["data"])]))
+                    log(f"{callback}", needPrint=(bot.testMode))
                 else:
-                    await bot.send_private_msg(bot.owner[0], MessageChain(["Bind Error"]))
+                    callback = await bot.send_private_msg(bot.owner[0], MessageChain(["Bind Error"]))
+                    log(f"{callback}", needPrint=(bot.testMode))
                 return
         raise Exception()
     except:
         message = MessageChain(["参数错误"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
 #绑定记录
 async def checkUserBinded(bot, msg):
     message = MessageChain(["\n"])
@@ -1009,7 +1054,8 @@ async def checkUserBinded(bot, msg):
             message.add(MessageChain([f"\n{str(i+1)}. {user[i]['acc']} {user[i]['server']}"]))
     except Exception as e:
         message.add(MessageChain(["无绑定记录"]))
-    await bot.reply_to_message(msg, message)
+    callback = await bot.reply_to_message(msg, message)
+    log(f"{callback}", needPrint=(bot.testMode))
 #删除绑定
 async def delUserBinded(bot, msg, raw_message, be_at):
     raw_message = raw_message[4:].strip()
@@ -1022,14 +1068,18 @@ async def delUserBinded(bot, msg, raw_message, be_at):
                     user.remove(user[int(raw_message)-1])
                     users.dump_to_file("data/classify/bangdream/userBinding.json")
                     message = MessageChain(["账号删除成功"])
-                    await bot.reply_to_message(msg, message)
+                    callback = await bot.reply_to_message(msg, message)
+                    log(f"{callback}", needPrint=(bot.testMode))
                     await checkUserBinded(bot, msg)
                     return
         raise Exception()
-    except:
+    except Exception as e:
         message = MessageChain(["参数错误"])
-        await bot.reply_to_message(msg, message)
-        traceback.print_exc()
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
+        tb = e.__traceback__
+        formatted_tb = ''.join(traceback.format_tb(tb))
+        log(formatted_tb)
 
 
 #查试炼
@@ -1059,7 +1109,8 @@ async def self_search_event(bot, msg, raw_message, be_at):
 async def guess_chart(bot, msg, raw_message, be_at, num = 0):
     if str(msg["group_id"]) in guess_list.keys():
         message = MessageChain(["\n已有未完成的猜谱游戏，请先结束该游戏"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         return
     song_url = "https://bestdori.com//api/songs/all.7.json"
     song_list = requestData(song_url)
@@ -1073,9 +1124,13 @@ async def guess_chart(bot, msg, raw_message, be_at, num = 0):
     charID = list(temp)[idx]
     song = song_list[charID]
     d_list = list(song["difficulty"].keys())[3:]
+    for d in d_list:
+        if song["difficulty"][d]["playLevel"]<26:
+            d_list.remove(d)
     d = d_list[random.randint(0, len(d_list)-1)]
     try:
-        await bot.reply_to_message(msg, MessageChain("\n正在加载谱面..."))
+        callback = await bot.reply_to_message(msg, MessageChain("\n正在加载谱面..."))
+        log(f"{callback}", needPrint=(bot.testMode))
         charID = int(charID)
         chart = song_chart([3, 0], charID, d)
         if chart[0]["type"] != "base64":
@@ -1085,9 +1140,9 @@ async def guess_chart(bot, msg, raw_message, be_at, num = 0):
         #图片切割
         image_list = split_image(image_data=im, num=num)
         if num == 0:
-            score = 5
+            score = 10
         else:
-            score = 16 - (num*1)
+            score = 21 - (num*1)
         #
         message = MessageChain(["\n猜猜这是哪首歌的谱面？\n"])
         for i in range(len(image_list)):
@@ -1096,13 +1151,17 @@ async def guess_chart(bot, msg, raw_message, be_at, num = 0):
             image_list[i].save(imageURL)
             #发送图片
             message.add(ImageMessage(f"file://{bot.localtion}/{imageURL}"))
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
         guess_list.update({str(msg["group_id"]): {"charID": str(charID), "difficulty": str(d), "tips": 0, "score": score, "song_data": song, "chart_img": chart[0]["string"]}})
         return
     except Exception as e:
         message = MessageChain(["\n茨菇后台连接失败"])
-        await bot.reply_to_message(msg, message)
-        traceback.print_exc()
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
+        tb = e.__traceback__
+        formatted_tb = ''.join(traceback.format_tb(tb))
+        log(formatted_tb)
         return
 #猜谱回答
 async def answer_guess_chart(bot, msg, answer, be_at):
@@ -1119,7 +1178,8 @@ async def answer_guess_chart(bot, msg, answer, be_at):
         d_set = {"3": "expert", "4": "special"}
         message = MessageChain([f"\n已结束猜谱，正确答案为:\n{charID}. {song_name} [{d_set[song['difficulty']]}] [lv{song['song_data']['difficulty'][song['difficulty']]['playLevel']}]"])
         message.add(ImageMessage(f"base64://{song["chart_img"]}"))
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
     elif answer.strip() in ["提示"]:
         tips_id = guess_list[str(msg["group_id"])]["tips"]
         if tips_id <= 4 and guess_list[str(msg["group_id"])]["score"] > 0:
@@ -1129,16 +1189,18 @@ async def answer_guess_chart(bot, msg, answer, be_at):
         #物量 - 2
         if tips_id == 0:
             notes = guess_list[str(msg["group_id"])]["song_data"]["notes"][guess_list[str(msg["group_id"])]["difficulty"]]
-            low = (notes // 500) * 500
-            high = low + 500
+            low = (notes // 250) * 250
+            high = low + 250
             message = MessageChain([f"\n提示{tips_id+1}：该谱面物量为 {low} - {high}"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             guess_list[str(msg["group_id"])]["tips"] += 1
         #难度 - 2
         elif tips_id == 1:
             level = guess_list[str(msg["group_id"])]["song_data"]["difficulty"][guess_list[str(msg["group_id"])]["difficulty"]]
             message = MessageChain([f"\n提示{tips_id+1}：该谱面难度为 {level['playLevel']}"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             guess_list[str(msg["group_id"])]["tips"] += 1
         #乐团 - 2
         elif tips_id == 2:
@@ -1151,35 +1213,39 @@ async def answer_guess_chart(bot, msg, answer, be_at):
                     band_name = name
                     break
             message = MessageChain([f"\n提示{tips_id+1}：该谱面所属乐团为 {band_name}"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             guess_list[str(msg["group_id"])]["tips"] += 1
         #BPM - 2
         elif tips_id == 3:
             bpm_data = guess_list[str(msg["group_id"])]["song_data"]["bpm"][guess_list[str(msg["group_id"])]["difficulty"]]
             if len(bpm_data) == 1:
                 bpm = bpm_data[0]["bpm"]
-                low = (bpm // 50) * 50
-                high = low + 50
+                low = (bpm // 25) * 25
+                high = low + 25
                 message = MessageChain([f"\n提示{tips_id+1}：该谱面BPM为 {low} - {high}"])
             else:
                 bpm1 = bpm_data[0]["bpm"]
-                low = (bpm1 // 50) * 50
+                low = (bpm1 // 25) * 25
                 bpm2 = bpm_data[-1]["bpm"]
-                high = (bpm2 // 50) * 50 + 50
+                high = (bpm2 // 25) * 25 + 25
                 message = MessageChain([f"\n提示{tips_id+1}：该谱面BPM为 {low} - {high}"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             guess_list[str(msg["group_id"])]["tips"] += 1
         #曲目种类 - 2
         elif tips_id == 4:
             song_type = guess_list[str(msg["group_id"])]["song_data"]["tag"]
             typeSet = {"normal":"原创", "anime":"动画", "tie_up":"翻唱"}
             message = MessageChain([f"\n提示{tips_id+1}：该谱面曲目种类为 {typeSet[song_type]}"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             guess_list[str(msg["group_id"])]["tips"] += 1
         #提示用完
         else:
             message = MessageChain([f"\n提示次数已用完"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
     elif answer.strip().isdigit():
         charID = guess_list[str(msg["group_id"])]["charID"]
         if answer.strip() == charID:
@@ -1193,8 +1259,13 @@ async def answer_guess_chart(bot, msg, answer, be_at):
             message = MessageChain([f"\n回答正确！答案为:\n{charID}. {song_name} [{d_set[song['difficulty']]}] [lv{song['song_data']['difficulty'][song['difficulty']]['playLevel']}]\n"])
             message.add(MessageChain([f"获得积分: {song['score']} 分"]))
             message.add(ImageMessage(f"base64://{song["chart_img"]}"))
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
             await add_scroes(bot, msg, score=song["score"], add_type="chart")
+        else:
+            message = MessageChain(["猜错了"])
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
     elif be_at:
         charID = guess_list[str(msg["group_id"])]["charID"]
         parameters = answer.split(" ")
@@ -1218,8 +1289,13 @@ async def answer_guess_chart(bot, msg, answer, be_at):
                 message = MessageChain([f"\n回答正确！答案为:\n{charID}. {song_name} [{d_set[song['difficulty']]}] [lv{song['song_data']['difficulty'][song['difficulty']]['playLevel']}]\n"])
                 message.add(MessageChain([f"获得积分: {song['score']} 分"]))
                 message.add(ImageMessage(f"base64://{song["chart_img"]}"))
-                await bot.reply_to_message(msg, message)
+                callback = await bot.reply_to_message(msg, message)
+                log(f"{callback}", needPrint=(bot.testMode))
                 await add_scroes(bot, msg, score=song["score"], add_type="chart")
+                return
+        message = MessageChain(["猜错了"])
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
 
 #图片切割函数
 def split_image(image_path = None, image_data = None, num = 0):
@@ -1302,7 +1378,8 @@ async def add_scroes(bot, msg, score = 0, add_type: str = "sp"):
         score = score * card_bonus
         if card_bonus > 1:
             message = MessageChain([f"\n使用卡牌加成 x{1+card_bonus}，本次获得积分提升至 {int(score)} 分！"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
     data["scores"] += score
     if add_type == "sp":
         data["sp"] += score
@@ -1321,4 +1398,5 @@ async def add_scroes(bot, msg, score = 0, add_type: str = "sp"):
     #输出信息
     if rank > (old_rank) or old_rank == -1:
         message = MessageChain([f"恭喜你！你的总分提升到第 {rank+1} 名！"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))

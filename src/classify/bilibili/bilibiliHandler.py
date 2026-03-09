@@ -11,6 +11,8 @@ try:
 except:
     os.system("pip install OneBotConnecter")
     exec("from OneBotConnecter.MessageType import MessageChain, VideoMessage")
+from src.loger import log
+
 
 #QQ小程序签名认证以获取短分享网址
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
@@ -51,7 +53,7 @@ def getHighestQuality(bv: int | str):
     bv = str(bv)
     url = f"https://api.nxvav.cn/api/bilivideo/?bv={bv}&p=1&otype=json"
     response = httpx.get(url)
-    print(response.text)
+    log(response.text)
     accept_quality = json.loads(response.text)["accept_quality"]
     return accept_quality[0]
 
@@ -77,7 +79,8 @@ async def bilibiliMode(bot, message, raw_message, be_at):
         #快捷分享 (资料卡)
         if "[CQ:json,data=" in raw_message and "哔哩哔哩" in raw_message:
             msg = MessageChain(["正在转换视频..."])
-            await bot.send_group_msg(message["group_id"], msg)
+            callback = await bot.send_group_msg(message["group_id"], msg)
+            log(f"{callback}", needPrint=(bot.testMode))
             #取得资料卡
             data = message["message"]
             shareCard = [card for card in data if card["type"] == "json"][0]
@@ -86,7 +89,8 @@ async def bilibiliMode(bot, message, raw_message, be_at):
         #长分享网址(带BV号)
         elif "https://www.bilibili.com/video/" in raw_message:
             msg = MessageChain(["正在转换视频..."])
-            await bot.send_group_msg(message["group_id"], msg)
+            callback = await bot.send_group_msg(message["group_id"], msg)
+            log(f"{callback}", needPrint=(bot.testMode))
             #定位网址
             idx = raw_message.find("https://www.bilibili.com/video/")
             #直接从网址中取得BV号
@@ -95,7 +99,8 @@ async def bilibiliMode(bot, message, raw_message, be_at):
         #短分享网址(不带BV号)
         elif "https://b23.tv/" in raw_message:
             msg = MessageChain(["正在转换视频..."])
-            await bot.send_group_msg(message["group_id"], msg)
+            callback = await bot.send_group_msg(message["group_id"], msg)
+            log(f"{callback}", needPrint=(bot.testMode))
             #定位网址并取得完整网址
             idx = raw_message.find("https://b23.tv/")
             url = raw_message[idx:].split(" ")[0]
@@ -109,8 +114,10 @@ async def bilibiliMode(bot, message, raw_message, be_at):
         url = bvToVideoUrl(bv)
         #构造信息链并发送
         msg = MessageChain([VideoMessage(url)])
-        await bot.send_group_msg(message["group_id"], msg)
+        callback = await bot.send_group_msg(message["group_id"], msg)
+        log(f"{callback}", needPrint=(bot.testMode))
     except Exception as e:
-        print(f"[bilibiliHandler] bilibiliMode error: {e}")
+        log(f"[bilibiliHandler] bilibiliMode error: {e}")
         msg = MessageChain(["视频转换失败"])
-        await bot.send_group_msg(message["group_id"], msg)
+        callback = await bot.send_group_msg(message["group_id"], msg)
+        log(f"{callback}", needPrint=(bot.testMode))

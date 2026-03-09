@@ -1,5 +1,7 @@
 import os
+import traceback
 from src.classify.game.blackjack import blackjack
+from src.loger import log
 try:
     from OneBotConnecter.MessageType import MessageChain, AtMessage
 except:
@@ -11,7 +13,6 @@ except:
     os.system("pip install config-io")
     exec("from config_io import Config")
 
-
 blackjack_group = {} #groupid: blackjack instance
 
 async def gameMode(bot, message, raw_message, be_at):
@@ -19,12 +20,15 @@ async def gameMode(bot, message, raw_message, be_at):
         await blackjackMode(bot, message, raw_message, be_at)
     except Exception as e:
         group_id = message['group_id']
-        await bot.send_group_msg(
+        callback = await bot.send_group_msg(
             group_id=group_id,
             message=MessageChain(f"游戏模块出现错误: {str(e)}")
         )
+        log(f"{callback}", needPrint=(bot.testMode))
         del blackjack_group[group_id]
-        traceback.print_exc()
+        tb = e.__traceback__
+        formatted_tb = ''.join(traceback.format_tb(tb))
+        log(formatted_tb)
 
 async def blackjackMode(bot, message, raw_message, be_at):
     group_id = message['group_id']
@@ -32,15 +36,17 @@ async def blackjackMode(bot, message, raw_message, be_at):
     if raw_message == "21点":
         if group_id not in blackjack_group:
             blackjack_group[group_id] = blackjack()
-            await bot.send_group_msg(
+            callback = await bot.send_group_msg(
                 group_id=group_id,
                 message=MessageChain(f"21点游戏已创建！发送“加入21点”加入游戏，最多4人。")
             )
+            log(f"{callback}", needPrint=(bot.testMode))
         else:
-            await bot.send_group_msg(
+            callback = await bot.send_group_msg(
                 group_id=group_id,
                 message=MessageChain(f"当前已有21点游戏进行中，发送“加入21点”加入游戏。")
             )
+            log(f"{callback}", needPrint=(bot.testMode))
 
     if raw_message == "加入21点":
         user_id = message['user_id']
@@ -48,53 +54,61 @@ async def blackjackMode(bot, message, raw_message, be_at):
         if group_id in blackjack_group and not blackjack_group[group_id].started:
             game = blackjack_group[group_id]
             game.add_player(user_id, nickname)
-            await bot.send_group_msg(
+            callback = await bot.send_group_msg(
                 group_id=group_id,
                 message=MessageChain(game.returnJoinerInfo())
             )
+            log(f"{callback}", needPrint=(bot.testMode))
         else:
-            await bot.send_group_msg(
+            callback = await bot.send_group_msg(
                 group_id=group_id,
                 message=MessageChain(f"当前没有可加入的21点游戏。")
             )
+            log(f"{callback}", needPrint=(bot.testMode))
     
     if raw_message == "开始21点":
         if group_id in blackjack_group:
             game = blackjack_group[group_id]
             if not game.started:
                 if game.start_game():
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(f"21点游戏开始！")
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
                     #首轮自动为所有玩家抽取1张卡牌
                     for player in game.players.values():
                         card = game.deal_card(player.user_id)
                     #整合当前所有玩家手牌信息并展示
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(game.returnThisRoundInfo())
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
                     result, winner = game.next_player()
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(result)
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
                 else:
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(f"无法开始游戏，可能是因为玩家不足2人。")
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
             else:
-                await bot.send_group_msg(
+                callback = await bot.send_group_msg(
                     group_id=group_id,
                     message=MessageChain(f"游戏已开始，无法重复开始。")
                 )
+                log(f"{callback}", needPrint=(bot.testMode))
         else:
-            await bot.send_group_msg(
+            callback = await bot.send_group_msg(
                 group_id=group_id,
                 message=MessageChain(f"当前没有可开始的21点游戏。")
             )
+            log(f"{callback}", needPrint=(bot.testMode))
     
     if group_id in blackjack_group:
         game = blackjack_group[group_id]
@@ -112,32 +126,37 @@ async def blackjackMode(bot, message, raw_message, be_at):
                         response += f"玩家[{player.user_nickname}]爆点！\n"
                     elif hand_value == 21:
                         response += f"玩家[{player.user_nickname}]已满值！\n"
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(response)
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
                     result, winner = game.next_player()
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(result)
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
                 elif raw_message == "停牌":
                     game.stop_player(user_id)
                     response = f"玩家[{game.players[user_id].user_nickname}]选择停牌。\n"
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(response)
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
                     result, winner = game.next_player()
-                    await bot.send_group_msg(
+                    callback = await bot.send_group_msg(
                         group_id=group_id,
                         message=MessageChain(result)
                     )
+                    log(f"{callback}", needPrint=(bot.testMode))
                 if winner != None:
                     await add_scroes(bot = bot, msg = message, score = 5)
                     msg = MessageChain([AtMessage(int(winner))])
                     msg.add(f" 获得 {5} 积分！")
-                    await bot.send_group_msg(int(message["group_id"]), msg)
+                    callback = await bot.send_group_msg(int(message["group_id"]), msg)
+                    log(f"{callback}", needPrint=(bot.testMode))
                     del blackjack_group[group_id]
 
 async def add_scroes(bot, msg, score = 0, add_type: str = "sp"):
@@ -165,7 +184,8 @@ async def add_scroes(bot, msg, score = 0, add_type: str = "sp"):
         score = score * card_bonus
         if card_bonus > 1:
             message = MessageChain([f"\n使用卡牌加成 x{1+card_bonus}，本次获得积分提升至 {int(score)} 分！"])
-            await bot.reply_to_message(msg, message)
+            callback = await bot.reply_to_message(msg, message)
+            log(f"{callback}", needPrint=(bot.testMode))
     data["scores"] += score
     if add_type == "sp":
         data["sp"] += score
@@ -181,4 +201,5 @@ async def add_scroes(bot, msg, score = 0, add_type: str = "sp"):
     #输出信息
     if rank > (old_rank) or old_rank == -1:
         message = MessageChain([f"恭喜你！你的总分提升到第 {rank+1} 名！"])
-        await bot.reply_to_message(msg, message)
+        callback = await bot.reply_to_message(msg, message)
+        log(f"{callback}", needPrint=(bot.testMode))
