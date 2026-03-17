@@ -14,6 +14,8 @@ import os, asyncio, random
 from src.importer import import_package
 from src.tools.reply_message import feedback
 from src.plugin.小生物积分.main import get_user_score, reduce_score
+from src.plugin.功能注册器.main import get_places_id, get_plgin_registrated_list
+exec(import_package("reloading", package_from= "reloading", package_pip_Name= "reloading"))
 exec(import_package("date", package_from="datetime", package_pip_Name="datetime"))
 exec(import_package("Config", package_from="config_io", package_pip_Name="config_io"))
 exec(import_package("log" , package_from= "src.loger"))
@@ -24,21 +26,26 @@ exec(import_package(
 #文件参数
 jrlp_file = "data/plugin/jrlp/jrlp.json" #(每日老婆记录文件默认位于 data/plugin/jrlp/jrlp.json)
 
-
+@reloading
 async def onMessage(bot, message, raw_message, be_at, msgType):
     if msgType != "Group_message": return
     # == 今日老婆 ==
     #今日老婆
     if raw_message in ["jrlp", "今日老婆"]:
         await jrlp(bot, message)
-    elif raw_message == "换老婆" and has_jrlp(bot, message)[0]:
+    elif raw_message in ["换老婆", "hlp"] and has_jrlp(bot, message)[0]:
         score = get_user_score(message)
         if score["scores"] >= 10:
             if cancal_jrlp(bot, message):
                 reduce_score(message, 10)
                 await jrlp(bot, message)
                 return
-        await feedback(bot, message, MessageChain(["不许当DD哦！"]))
+        places_id = get_places_id(message)
+        permissions = get_plgin_registrated_list(places_id=places_id)
+        if "小生物积分" in permissions:
+            await feedback(bot, message, MessageChain(["需要10积分哦！"]))
+        else:
+            await feedback(bot, message, MessageChain(["不许当DD哦！"]))
     elif raw_message[0] in ["牛"]:
         await n_jrlp(bot, message, raw_message)
     pass

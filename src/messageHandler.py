@@ -15,7 +15,7 @@ from src.importer import import_package
 import src.config as config_reader
 
 exec(import_package("traceback"))
-exec(import_package("Config", package_from="config_io", ))
+exec(import_package("Config", package_from="config_io", package_pip_Name="config_io"))
 exec(import_package("datetime", package_from= "datetime"))
 exec(import_package("src.loger" , name_as= "loger"))
 #自动加载插件文件夹下的所有文件

@@ -15,6 +15,7 @@ from src.importer import import_package
 from src.loger import log
 from src.tools.reply_message import feedback
 from src.tools.image_cuter import split_image
+exec(import_package("reloading", package_from= "reloading", package_pip_Name= "reloading"))
 exec(import_package("requests"))
 exec(import_package("Config", package_from= "config_io", package_pip_Name= "config-io"))
 exec(import_package(
@@ -25,22 +26,21 @@ exec(import_package(
 from src.plugin.功能注册器.main import get_places_id, help
 
 
-
 score_list_path = "data/plugin/score/guess_scores.json"
 
 guess_users = {} #猜群友
 
-
+@reloading
 async def onMessage(bot, message, raw_message, be_at, msgType):
     # == 积分系统 ==
     #排名
-    if raw_message[0:2] == "排名":
+    if raw_message[0:2] in ["排名"]:
         num = 10
         if raw_message[2:].strip().isdigit():
             num = int(raw_message[2:].strip())
         await guess_ranking(bot, message, num = num)
     #查分
-    elif raw_message[0:2] == "查分":
+    elif raw_message in ["查分", "我的积分"]:
         await checkScores(bot, message)
     #笨蛋机
     elif raw_message[0:1] in ["土", "赌"]:
@@ -58,9 +58,19 @@ async def onMessage(bot, message, raw_message, be_at, msgType):
     #卡牌加成开关
     elif raw_message in ["加成开关"]:
         use_card_switch = use_card(message)
-        msg = MessageChain(["\n已关闭使用卡牌加成，下次猜分数将不再有额外加成！"])
+        msg = MessageChain(["\n已关闭使用卡牌加成，下次获得分数将不再有额外加成！"])
         if use_card_switch:
-            msg = MessageChain(["\n已开启使用卡牌加成，下次猜分数将有额外加成哦！"])
+            msg = MessageChain(["\n已开启使用卡牌加成，下次获得分数将有额外加成哦！"])
+        await feedback(bot, message, msg)
+    #加成列表
+    elif raw_message in ["加成列表"]:
+        data = get_user_score(message)
+        if len(data["cards"]) == 0:
+            msg = MessageChain(["你当前没有任何加成卡牌哦！"])
+        else:
+            msg = MessageChain(["\n你当前的加成卡牌列表:"])
+            for i, card in enumerate(data["cards"]):
+                msg.add(MessageChain([f"\n{i+1}. 加成倍率: {card}"]))
         await feedback(bot, message, msg)
     #help
     elif raw_message == "小生物积分":
@@ -116,9 +126,9 @@ async def randAddScroes(bot, msg, input_score: int = 10):
     score = random.randint(1, 100)
     if score <= 5:
         score = 200
-    elif score <= 20:
+    elif score <= 15:
         score = 0
-    elif score <= 60:
+    elif score <= 30:
         score = random.randint(0, 100)
     else:
         score = random.randint(100, 200)
@@ -133,7 +143,7 @@ async def randAddScroes(bot, msg, input_score: int = 10):
 #查分
 async def checkScores(bot, msg):
     data = get_user_score(msg)
-    message = MessageChain([f"你的总积分为: {data["scores"]}"])
+    message = MessageChain([f"你的总积分为: {int(data["scores"])}"])
     await feedback(bot, msg, message)
 
 #查分_json => {"scores", "chart", "card", "sp", "name", "cards", "use_card", "time"}
@@ -189,15 +199,21 @@ async def add_scroes(bot, msg, score = 0, add_type: str = "sp", get_card_p = 0, 
     user_list.sort(key=lambda uid: users[uid]["scores"], reverse=True)
     rank = user_list.index(user_id)
     #输出信息
-    if rank > (old_rank) or old_rank == -1:
+    if rank < (old_rank) or old_rank == -1:
         message = MessageChain([f"恭喜你！你的总分提升到第 {rank+1} 名！"])
         await feedback(bot, msg, message)
-    #5%概率获得小卡片
+    #概率获得小卡片
     if random.randint(0, 99) < get_card_p:
         card_score = random.randint(1, max_card_bonus) / 100
-        get_card(msg, card_score=card_score)
-        message = MessageChain([f"\n获得了一个小卡片[倍率: {card_score}]！下次猜分数将有额外加成哦！"])
+        message = MessageChain([f"\n获得了一个小卡片[倍率: {card_score}]！下次获得分数将有额外加成哦！"])
         await feedback(bot, msg, message)
+        # 小概率获得947大奖卡片 (10%概率，倍率9.47)
+        if (card_score >= 4.7 or card_score == 0.47) and random.randint(0, 99) <= 9:
+            card_score = 9.47
+            message = MessageChain([f"\n中大奖噜！卡片倍率已进化为{card_score}～"])
+            await feedback(bot, msg, message)
+        get_card(msg, card_score=card_score)
+        
 #减分
 def reduce_score(msg, score, time = None):
     user_id = msg["sender"]["user_id"]

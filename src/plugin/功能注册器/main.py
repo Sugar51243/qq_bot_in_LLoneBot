@@ -13,6 +13,7 @@
 import os, asyncio
 from src.importer import import_package
 from src.tools.reply_message import feedback
+exec(import_package("reloading", package_from= "reloading", package_pip_Name= "reloading"))
 exec(import_package(
     "MessageChain, ImageMessage, RecordMessage, AtMessage, EmojiMessage, ReplyMessage", 
     package_from= "OneBotConnecter.MessageType", package_pip_Name = "OneBotConnecter"))
@@ -25,7 +26,7 @@ permissions_file = "data/permissions.yaml" #(权限文件默认位于 data/permi
 
 waiting_leave = []
 
-
+@reloading
 async def onMessage(bot, message, raw_message, be_at, msgType):
     if msgType == "Group_increase":
         if str(message["user_id"]) == str(bot.botAcc):
@@ -172,6 +173,7 @@ def registrated_plugin(places_id):
 async def registrate(bot, msg, places_id: str, target: list):
     plugin_folders = os.listdir("src/plugin")
     i = 0
+    reged = []
     for plugin in target:
         # 不存在的功能
         if plugin not in plugin_folders:
@@ -191,9 +193,8 @@ async def registrate(bot, msg, places_id: str, target: list):
             holded_permissions.append(plugin)
             permissions[places_id] = holded_permissions
             permissions.dump_to_file("data/permissions.yaml")
-            message = MessageChain([f"{plugin}启用成功"])
-            await feedback(bot, msg, message)
             i += 1 # 计数
+            reged.append(plugin)
         # 注册失败
         except:
             message = MessageChain([f"\n后台写入失败，已帮你联系机器人管理员。请耐心等待回复……"])
@@ -203,6 +204,11 @@ async def registrate(bot, msg, places_id: str, target: list):
     if i <= 0:
         message = MessageChain([f"\n未识别出有效参数, 以下为本场景可注册的功能列表:"])
         message.add(allowed_plugins(places_id))
+        await feedback(bot, msg, message)
+    # 注册成功
+    else:
+        if len(reged) == 1: reged = reged[0]
+        message = MessageChain([f"\n功能{reged}启用成功"])
         await feedback(bot, msg, message)
 
 # 停用功能

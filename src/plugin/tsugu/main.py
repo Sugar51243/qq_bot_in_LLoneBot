@@ -11,7 +11,7 @@
 #  ==> pip自动下载缺失的库
 # type: ignore
 import os, asyncio, random, io
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.importer import import_package
 from src.plugin.功能注册器.main import get_places_id, help, get_plgin_registrated_list
 from src.plugin.小生物积分.main import add_scroes
@@ -20,6 +20,7 @@ from src.plugin.tsugu.call_tsugu import call_tsugu, call_net
 from src.tools.reply_message import feedback
 from src.tools.image_cuter import split_image
 from src.loger import log
+exec(import_package("reloading", package_from= "reloading", package_pip_Name= "reloading"))
 exec(import_package("eyed3"))
 exec(import_package("requests"))
 exec(import_package("traceback"))
@@ -31,6 +32,7 @@ exec(import_package("Config", package_from= "config_io", package_pip_Name= "conf
 exec(import_package(
     "MessageChain, ImageMessage", 
     package_from= "OneBotConnecter.MessageType", package_pip_Name= "OneBotConnecter"))
+exec(import_package("load_config", name_as="load", package_from= "Config_reader", package_pip_Name= "Python-json-config-reader"))
 
 
 bangdream_config = load_config("data/plugin/bangdream/config.yaml")
@@ -42,7 +44,9 @@ guess_char_list = {}
 guess_card_list = {}
 
 
+@reloading
 async def onMessage(bot, message, raw_message, be_at, msgType):
+    places_id = get_places_id(message)
     # == 谱面 ==
     # 查谱
     if raw_message[0:2] == "查谱":
@@ -109,8 +113,8 @@ async def onMessage(bot, message, raw_message, be_at, msgType):
             await feedback(bot, message, send_message)
             return
         parameters = command.split(" ")
-        difficulty = parameters[-1]
-        difficultyKeySet = {"ez":0, "nm":1, "hd":2, "ex":3, "sp":4}
+        difficulty = parameters[-1].lower()
+        difficultyKeySet = {"ez":0, "nm":1, "hd":2, "ex":3, "sp":4, "easy":0, "normal":1, "hard":2, "expert":3, "special":4}
         try: 
             difficulty = difficultyKeySet[difficulty]
             parameters = parameters[:-1]
@@ -282,7 +286,7 @@ async def onMessage(bot, message, raw_message, be_at, msgType):
     elif raw_message[0:4] == "上传车牌":
         await self_submit_room_number(bot, message, raw_message, be_at)
     # help
-    elif raw_message.lower() in ["bangdream", "tsugu", "茨菇"]:
+    elif raw_message.lower() in ["bangdream", "tsugu", "茨菇"] and places_id not in list(guess_card_list.keys()):
         places_id = get_places_id(message)
         await help(bot, message, "tsugu", places_id)
     # 猜谱面
@@ -325,8 +329,8 @@ async def sreachChart(bot, message, parameter):
     except Exception as e:
         log(f"尝试搜索官谱", needPrint=(bot.testMode))
         parameters = parameter.split(" ")
-        difficulty = parameters[-1]
-        difficultyKeySet = {"ez":0, "nm":1, "hd":2, "ex":3, "sp":4}
+        difficulty = parameters[-1].lower()
+        difficultyKeySet = {"ez":0, "nm":1, "hd":2, "ex":3, "sp":4, "easy":0, "normal":1, "hard":2, "expert":3, "special":4}
         try: 
             difficulty = difficultyKeySet[difficulty]
             parameters = parameters[:-1]
@@ -423,7 +427,10 @@ async def sonolus_chart(bot, msg, chartData, charID):
     imageURL = await renderingChart(bot, charData= chart, charID= id, server= server, difficult= difficult)
     if imageURL == None: message.add("渲染失败")
     else: message.add(MessageChain([ImageMessage(f"file://{bot.localtion}/{imageURL}")]))
-    await feedback(bot, msg, message)
+    try:
+        await feedback(bot, msg, message)
+    except Exception as e:
+        log(f"[{type(e)}]: {e}")
 #谱面渲染至图片 - bestdori-render
 async def renderingChart(bot, charData: list, charID: str | int, server: str, difficult = "expert"):
     try:
@@ -432,9 +439,9 @@ async def renderingChart(bot, charData: list, charID: str | int, server: str, di
         image = render(charData)
         log(f"渲染成功", needPrint=(bot.testMode))
         if server == "Bandori":
-            imageURL: str = f"data/classify/bangdream/char/{charID}-{difficult}.png"
+            imageURL: str = f"data/plugin/bangdream/char/{charID}-{difficult}.png"
         else:
-            imageURL: str = f"data/classify/bangdream/char/{charID}.png"
+            imageURL: str = f"data/plugin/bangdream/char/{charID}.png"
         image.save(imageURL)
         log(f"文件已储存至: {imageURL}", needPrint=(bot.testMode))
         #返回文件地址
@@ -928,7 +935,7 @@ async def bing_user(bot, msg, raw_message, be_at):
             data.append({"acc":player_id, "server": server})
             users[str(msg["sender"]["user_id"])]=data
             #写入文件
-            users.dump_to_file("data/classify/bangdream/userBinding.json")
+            users.dump_to_file(user_acc_path)
             #反馈
             message = MessageChain(["账号储存成功"])
             await feedback(bot, msg, message)
@@ -1477,7 +1484,7 @@ async def guess_chart(bot, msg, raw_message, be_at, num = 0):
 #猜谱回答
 async def answer_guess_chart(bot, msg, answer, be_at):
     places_id = get_places_id(msg)
-    if places_id not in guess_char_list.keys():
+    if places_id not in list(guess_char_list.keys()):
         return
     if answer.strip() in ["bzd", "不知道"]:
         song = guess_char_list.pop(places_id)
@@ -1600,12 +1607,30 @@ async def answer_guess_chart(bot, msg, answer, be_at):
             message = MessageChain(["猜错了"])
             await feedback(bot, msg, message)
 
+#猜卡面超时
+async def end_guess_card(bot, msg, places_id, package, time_out):
+    await asyncio.sleep(time_out)
+    data = guess_card_list.get(places_id, None)
+    if data == None:
+        return
+    if data["cardID"] != package[places_id]["cardID"]:
+        return
+    data = guess_card_list.pop(places_id)
+    log("\n===================\n卡面计时器: 时间到！\n===================\n", needPrint=(bot.testMode))
+    cardID = data["cardID"]
+    cardName = data["cardName"][0]
+    characterName = data["characterName"][0]
+    message = MessageChain([f"\n时间到！已结束猜卡面，正确答案为:\n{characterName}\n{cardID}. {cardName}\n"])
+    message.add(ImageMessage(data["cardURI"]))
+    await feedback(bot, msg, message)
 #猜卡面
 async def guess_card(bot, msg, raw_message, be_at):
-    if get_places_id(msg) in guess_char_list.keys() or get_places_id(msg) in guess_card_list.keys():
+    #检查对象场景正在游戏中
+    if get_places_id(msg) in list(guess_char_list.keys()) or get_places_id(msg) in list(guess_card_list.keys()):
         message = MessageChain(["\n已有未完成的猜谱游戏，请先结束该游戏"])
         await feedback(bot, msg, message)
         return
+    #确认参数
     star = 3
     raw_message = raw_message.replace("猜卡面", "猜卡")
     raw_message = raw_message[2:].strip()
@@ -1614,9 +1639,9 @@ async def guess_card(bot, msg, raw_message, be_at):
             raw_message = raw_message[:1].strip()
         if raw_message.isdigit():
             star = int(raw_message) if (int(raw_message) >= 3 and int(raw_message) <= 5) else 3
+    #请求卡面列表
     log(f"猜卡 - 请求卡面列表", needPrint=(bot.testMode))
-    card_url = "https://bestdori.com/api/cards/all.5.json"
-    card_list = await call_net(card_url)
+    card_list = load("data/plugin/bangdream/card_list.json")
     log(f"卡面列表[{len(card_list)}: {card_list}", needPrint=(bot.testMode))
     log(f"过滤至只剩>={star}星", needPrint=(bot.testMode))
     temp = []
@@ -1625,25 +1650,24 @@ async def guess_card(bot, msg, raw_message, be_at):
             continue
         temp.append(id)
     log(f"卡面列表[{len(temp)}: {temp}", needPrint=(bot.testMode))
+    #随机目标
     idx = random.randint(0, len(temp)-1)
     card_id = list(temp)[idx]
     log(f"随机目标: {card_id}", needPrint=(bot.testMode))
-    #
-    card = await call_net(f"https://bestdori.com/api/cards/{card_id}.json")
-    character = await call_net(f"https://bestdori.com/api/characters/{card["characterId"]}.json")
-    uri = getImage(card, True)
+    card = card_list[card_id]
+    character = await call_net(f"https://bestdori.com/api/characters/{card['characterId']}.json")
     #图片切割
+    uri = getImage(card, True)
     image_list = await split_image(image_uri=uri, num=1, piece = 4)
     score = 5
-    #
-    message = MessageChain(["\n猜猜这是谁的卡面？\n"])
     #保存图片
     imageURL: str = f"data/plugin/bangdream/card/guess.jpg"
     image_list[0].convert("RGB").save(imageURL, format="JPEG")
     #发送图片
+    message = MessageChain(["\n猜猜这是谁的卡面？\n"])
     message.add(ImageMessage(f"file://{bot.localtion}/{imageURL}"))
     await feedback(bot, msg, message)
-    #
+    #储存游戏信息
     package = {
         get_places_id(msg):{
             "cardID": str(card_id),
@@ -1656,11 +1680,19 @@ async def guess_card(bot, msg, raw_message, be_at):
     }
     guess_card_list.update(package)
     log(package, needPrint=(bot.testMode))
+    #计时
+    time_out = 10 * 60
+    asyncio.create_task(end_guess_card(bot, msg, get_places_id(msg), package, time_out))
+    log(f"卡面计时器: [{time_out}]", needPrint=(bot.testMode))
+    log(f"过期时间为: {datetime.now() + timedelta(seconds=time_out)}", needPrint=(bot.testMode))
 #猜卡面回答
 async def answer_guess_card(bot, msg, answer, be_at):
+    #检查对象场景正在游戏中
     places_id = get_places_id(msg)
     if places_id not in guess_card_list.keys():
         return
+    #回答检查
+    #不知道
     if answer.strip() in ["bzd", "不知道"]:
         card = guess_card_list.pop(places_id)
         cardID = card["cardID"]
@@ -1669,12 +1701,15 @@ async def answer_guess_card(bot, msg, answer, be_at):
         message = MessageChain([f"\n已结束猜卡面，正确答案为:\n{characterName}\n{cardID}. {cardName}\n"])
         message.add(ImageMessage(card["cardURI"]))
         await feedback(bot, msg, message)
+    #卡面ID
     elif answer.strip().isdigit():
         card = guess_card_list[places_id]
+        #错误
         if answer.strip() != card["cardID"]:
             message = MessageChain(["猜错了"])
             await feedback(bot, msg, message)
             return
+        #正确
         card = guess_card_list.pop(places_id)
         cardID = card["cardID"]
         cardName = card["cardName"][0]
@@ -1684,8 +1719,10 @@ async def answer_guess_card(bot, msg, answer, be_at):
         message.add(ImageMessage(card["cardURI"]))
         await feedback(bot, msg, message)
         await add_scroes(bot, msg, score=card["score"], add_type="chart", get_card_p=10)
+    #模糊搜索
     else:
         card = guess_card_list[places_id]
+        #卡面名称或角色名称包含回答内容即视为正确
         if answer.strip() in card["cardName"] or answer.strip() in card["characterName"]:
             card = guess_card_list.pop(places_id)
             cardID = card["cardID"]
@@ -1694,19 +1731,31 @@ async def answer_guess_card(bot, msg, answer, be_at):
             message = MessageChain([f"\n回答正确！已结束猜卡面，正确答案为:\n{characterName}\n{cardID}. {cardName}\n"])
             message.add(MessageChain([f"获得积分: {card['score']} 分"]))
             message.add(ImageMessage(card["cardURI"]))
+            timer = timer_list.pop(places_id, None)
+            if timer is not None:
+                timer.cancel()
             await feedback(bot, msg, message)
             await add_scroes(bot, msg, score=card["score"], add_type="chart")
             return
+        #模糊搜索
         uri = f"{bangdream_config[bangdream_config["use_uri"]]}/fuzzySearch"
         datapack = {"text": answer}
         result = await call_net(uri, mode="post", data_pack=datapack)
+        #搜索结果检查
+        #茨菇连接失败
         if result == {}:
             message = MessageChain(["\n网络连接不好，请再尝试"])
             await feedback(bot, msg, message)
             return
         log(result["data"], needPrint=(bot.testMode))
+        #搜索结果中包含正确卡面即视为正确
         try:
+            if len(list(set(result["data"]["characterId"]))) > 5:
+                log("搜索结果中包含多个角色，无法确认正确卡面", needPrint=(bot.testMode))
+                await feedback(bot, msg, MessageChain(["\n不要单次枚举多个选项哦~"]))
+                return
             for c_id in result["data"]["characterId"]:
+                #检查角色ID是否匹配
                 if str(c_id) != card["characterID"]:
                     continue
                 card = guess_card_list.pop(places_id)
@@ -1720,6 +1769,7 @@ async def answer_guess_card(bot, msg, answer, be_at):
                 await add_scroes(bot, msg, score=card["score"], add_type="chart", get_card_p=10)
                 return
         except: pass
+        #搜索结果中不包含正确卡面
         if be_at:
             message = MessageChain(["猜错了"])
             await feedback(bot, msg, message)

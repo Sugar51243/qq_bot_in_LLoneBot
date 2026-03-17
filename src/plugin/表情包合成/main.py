@@ -15,13 +15,15 @@ from src.importer import import_package
 from src.loger import log
 from src.plugin.功能注册器.main import get_places_id, help
 from src.tools.image_cuter import split_image
+from src.tools.reply_message import feedback
 from io import BytesIO
+exec(import_package("reloading", package_from= "reloading", package_pip_Name= "reloading"))
 exec(import_package(
     "MessageChain, ImageMessage, RecordMessage, AtMessage, EmojiMessage, ReplyMessage", 
     package_from= "OneBotConnecter.MessageType", 
     package_pip_Name= "OneBotConnecter")
 )
-exec(import_package("Image, ImageDraw", package_from= "PIL", package_pip_Name= "pillow"))
+exec(import_package("Image, ImageDraw, ImageSequence", package_from= "PIL", package_pip_Name= "pillow"))
 exec(import_package("numpy", name_as="np"))
 exec(import_package("load_config", name_as="load", package_from= "Config_reader", package_pip_Name= "Python-json-config-reader"))
 
@@ -32,7 +34,7 @@ bit_path = ""
 fuck_path = ""
 
 
-
+@reloading
 async def onMessage(bot, message, raw_message, be_at, msgType):
     if msgType not in ["Group_message", "Private_message"]:
         return
@@ -89,21 +91,23 @@ async def onMessage(bot, message, raw_message, be_at, msgType):
         log(f"图片合成 - 镜像", needPrint=(bot.testMode))
         await mirror(bot, message, raw_message)
     #变速
+    elif "渐变速" in raw_message:
+        log(f"图片合成 - 渐变速", needPrint=(bot.testMode))
+        await change_speed_gradient(bot, message, raw_message)
     elif "变速" in raw_message:
         log(f"图片合成 - 变速", needPrint=(bot.testMode))
         await change_speed(bot, message, raw_message)
+    #help
     elif raw_message == "表情包合成":
         places_id = get_places_id(message)
         await help(bot, message, "表情包合成", places_id)
-
-
-
+#抽
 async def bit(user_1, user_2, output_path):
     avatar_path = user_1
     avatar_path_1 = user_2
     gif_path = bit_path
     # 读取原GIF的所有帧和时长
-    gif_frames, gif_durations = get_img_frame(gif_path)
+    isGIF, gif_frames, gif_durations = await get_img_frame(gif_path)
     # 获取图片二进制数据
     try:
         avatar, avatar_1 = await get_target_img(avatar_path, avatar_path_1, 22, 22)
@@ -121,21 +125,14 @@ async def bit(user_1, user_2, output_path):
     positions_1 = [(12, 69), (15, 66), (14, 67), (15, 66), (17, 67), (14, 63), (21, 56), (15, 62), (17, 69)]
     new_frames = make_up_gif(gif_frames, avatar, avatar_1, positions, positions_1)
     # 保存新GIF
-    new_frames[0].save(
-        output_path,
-        save_all=True,
-        append_images=new_frames[1:],
-        duration=gif_durations,
-        loop=0,  # 0表示无限循环
-        disposal=2  # 帧刷新方式，避免残影
-    )
-
+    save_gif(new_frames, output_path, gif_durations)
+#撅
 async def fuck(user_1, user_2, output_path):
     avatar_path = user_1
     avatar_path_1 = user_2
     gif_path = fuck_path
     # 读取原GIF的所有帧和时长
-    gif_frames, gif_durations = get_img_frame(gif_path)
+    isGIF, gif_frames, gif_durations = await get_img_frame(gif_path)
     # 获取图片二进制数据
     try:
         avatar, avatar_1 = await get_target_img(avatar_path, avatar_path_1, 120, 120)
@@ -154,57 +151,64 @@ async def fuck(user_1, user_2, output_path):
     positions_1 = [(-10, 165), (0, 160), (-10, 140)]
     new_frames = new_frames = make_up_gif(gif_frames, avatar, avatar_1, positions, positions_1)
     # 保存新GIF
-    new_frames[0].save(
-        output_path,
-        save_all=True,
-        append_images=new_frames[1:],
-        duration=gif_durations,
-        loop=0,  # 0表示无限循环
-        disposal=2  # 帧刷新方式，避免残影
-    )
+    save_gif(new_frames, output_path, gif_durations)
 
-
+#镜像
 async def mirror(bot, message, raw_message):
     command = raw_message[raw_message.find("镜像")+2:].strip()
-    target_l, target_h = None, None
-    if len(command) > 0:
-        if command[0] == "左":
-            target_l = "left"
-        elif command[0] == "右":
-            target_l = "right"
-        elif command[0] == "上":
-            target_h = "up"
-        elif command[0] == "下":
-            target_h = "down"
+    target_l, target_h = get_command_direction(command)
     if not target_l and not target_h: target_l = "left"
     reply_id, user_id = None, None
+    imageName, url = None, None
     messages = message["message"]
+    log("正在查找回复消息", needPrint=(bot.testMode))
+    #查找图片消息、回复消息和艾特消息
     for ms in messages:
+        log(f"正在检查消息: {ms}", needPrint=(bot.testMode))
         if ms["type"] == "reply":
             reply_id = ms["data"]["id"]
             break
         elif ms["type"] == "at":
             user_id = ms["data"]["qq"]
             break
-    if not reply_id and not user_id: return
-    imageName, url = None, None
-    try:
-        reply_msg = await bot.get_msg(reply_id)
-        log(f"{reply_msg}", needPrint=(bot.testMode))
-        messages = reply_msg["data"]["message"]
-        for ms in messages:
-            if ms["type"] == "image":
-                imageName = ms["data"]["file"]
-                url = ms["data"]["url"]
-                break
-    except Exception as e:
-        pass
+        elif ms["type"] == "image":
+            log(f"图片size: {ms["data"]["file_size"]}", needPrint=(bot.testMode))
+            if int(ms["data"]["file_size"]) >= 5000000:
+                log("图片过大，无法处理", needPrint=(bot.testMode))
+                msg = MessageChain(["\n图片过大，无法处理"])
+                await feedback(bot, message, msg)
+                continue
+            imageName = ms["data"]["file"]
+            url = ms["data"]["url"]
+            break
+    if not reply_id and not user_id and not imageName: 
+        log("未找到回复消息、艾特用户或图片消息", needPrint=(bot.testMode))
+    if not url and not imageName:
+        try:
+            reply_msg = await bot.get_msg(reply_id)
+            log(f"{reply_msg}", needPrint=(bot.testMode))
+            messages = reply_msg["data"]["message"]
+            for ms in messages:
+                log(f"正在检查消息: {ms}", needPrint=(bot.testMode))
+                if ms["type"] == "image":
+                    log(f"图片size: {ms["data"]["file_size"]}", needPrint=(bot.testMode))
+                    if int(ms["data"]["file_size"]) >= 5000000:
+                        log("图片过大，无法处理", needPrint=(bot.testMode))
+                        msg = MessageChain(["\n图片过大，无法处理"])
+                        await feedback(bot, message, msg)
+                        continue
+                    imageName = ms["data"]["file"]
+                    url = ms["data"]["url"]
+                    break
+        except Exception as e:
+            pass
     if user_id != None:
         imageName = f"{user_id}.jpg"
         url = f"https://q1.qlogo.cn/g?b=qq&nk={imageName}&s=640"
     if not imageName or not url:
         imageName = f"{reply_msg["data"]["sender"]["user_id"]}.jpg"
         url = f"https://q1.qlogo.cn/g?b=qq&nk={reply_msg["data"]["sender"]["user_id"]}&s=640"
+    #获取图片
     image = None
     try:
         response = requests.get(url, timeout=10)
@@ -217,19 +221,12 @@ async def mirror(bot, message, raw_message):
         log(formatted_tb)
         return
     if not image:
+        log("打开图片失败", needPrint=(bot.testMode))
         return
-    temp = []
-    gif_durations = []
-    reader = imageio.get_reader(url)
-    for frame in reader:
-        temp.append(Image.fromarray(frame))
-        try:
-            gif_durations.append(reader.get_meta_data()['duration'])
-        except: pass
-        image = temp
+    isGIF, image, gif_durations = await get_img_frame(url)
     mask_color = 0
-    for i in range(len(image)):
-        im = image[i].convert("RGBA")
+    temp_list = []
+    for im in image:
         arr = np.array(im, dtype=np.uint8)
         h, w = arr.shape[:2]
         mask = np.ones((h, w), dtype=bool)
@@ -264,104 +261,154 @@ async def mirror(bot, message, raw_message):
         masked[~mask] = np.array(mask_color, dtype=np.uint8)
         half = Image.fromarray(masked)
         # 镜像并拼接
-        if target_l != None:
-            temp = half.transpose(Image.FLIP_LEFT_RIGHT)
-        elif target_h != None:
-            temp = half.transpose(Image.FLIP_TOP_BOTTOM)
+        if target_l != None: temp = half.transpose(Image.FLIP_LEFT_RIGHT)
+        elif target_h != None: temp = half.transpose(Image.FLIP_TOP_BOTTOM)
         temp.paste(half, (0,0), mask=half)
-        image[i] = temp
-    if len(image) > 1:
+        temp_list.append(temp)
+    image = temp_list
+    if not isGIF:
         output_path = f"{img_output_path}/mirror/{message['sender']['user_id']}_mirror.gif"
-        # 保存新GIF
-        image[0].save(
-            output_path,
-            save_all=True,
-            append_images=image[1:],
-            duration=gif_durations,
-            loop=0,  # 0表示无限循环
-            disposal=2  # 帧刷新方式，避免残影
-        )
+        save_gif(image, gif_durations, output_path)
     else:
-        temp = image[0].transpose(Image.FLIP_LEFT_RIGHT)
-        image[0] = temp
         output_path = f"{img_output_path}/mirror/{message['sender']['user_id']}_mirror.png"
         image[0].save(output_path)
     msg = ImageMessage(f"file://{bot.localtion}/{output_path}")
     callback = await bot.reply_to_message(message,msg)
     log(f"{callback}", needPrint=(bot.testMode))
-
+#变速
 async def change_speed(bot, message, raw_message):
     command = raw_message[raw_message.find("变速")+2:].strip()
+    # 解析命令参数
     if len(command)>0:
-        if command[0].lower() == "x": 
+        if command[0].lower() in ["x", "×"]: 
             command = command[1:].strip()
     try: speed = float(command)
     except: speed = 2.0
-    messages = message["message"]
-    reply_id = None
-    for ms in messages:
-        if ms["type"] == "reply":
-            reply_id = ms["data"]["id"]
-            break
-    if reply_id == None: return
-    imageName = None
-    url = None
-    try:
-        reply_msg = await bot.get_msg(reply_id)
-        log(f"{reply_msg}", needPrint=(bot.testMode))
-        messages = reply_msg["data"]["message"]
-        for ms in messages:
-            if ms["type"] == "image":
-                imageName = ms["data"]["file"]
-                url = ms["data"]["url"]
-                break
-    except Exception as e:
-        pass
-    if imageName == None or url == None:
+    log(f"变速倍数: {speed}", needPrint=(bot.testMode))
+    # 获取目标图片URL
+    image, url = await get_img(bot, message)
+    # 变速处理
+    #读取GIF的所有帧和时长
+    isGIF, image, gif_durations = get_img_frame(url)
+    if not image or not gif_durations:
+        log(f"读取GIF帧失败", needPrint=(bot.testMode))
         return
-    image = None
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        image_data = BytesIO(response.content)
-        image = Image.open(image_data)
-    except Exception as e:
-        tb = e.__traceback__
-        formatted_tb = ''.join(traceback.format_tb(tb))
-        log(formatted_tb)
+    if not isGIF:
+        log(f"该图片不是GIF", needPrint=(bot.testMode))
         return
-    if image == None:
-        return
+    # 变速
     temp = []
-    gif_durations = []
-    reader = imageio.get_reader(url)
-    if len(reader)<=1:
-        return
-    for frame in reader:
-        temp.append(Image.fromarray(frame))
-        gif_durations.append(reader.get_meta_data()['duration'])
-    image = temp
+    temp_durations = []
+    need_counter = 0
+    need = True
+    cuted = False
     for i in range(len(image)):
-        image[i] = image[i].convert("RGBA")
-        img = Image.new("RGB", image[i].size, (255, 255, 255))
-        img.paste(image[i], mask=image[i].split()[3])
-        image[i] = img
-        gif_durations[i] = gif_durations[i] // speed
-
-    output_path = f"{img_output_path}/speed/{message['sender']['user_id']}_mirror.gif"
+        # 如果该帧需要
+        if need:
+            need_counter = 0
+            # 转换帧为RGBA，避免透明通道丢失
+            temp.append(image[i])
+            # 如果帧时长过短
+            # 下帧可按变速被抽取
+            if gif_durations[i] // speed < 20:
+                temp_durations.append(20)
+                try:
+                    if gif_durations[i+1] // speed < 20:
+                        need = False
+                except IndexError:
+                    pass
+            # 否则正常变速
+            else:
+                temp_durations.append(int(gif_durations[i] // speed))
+        # 如果该帧不需要
+        else:
+            cuted = True
+            # 按倍速抽帧
+            need_counter += 1
+            # 最后一帧保留
+            if need_counter >= (speed-1) or i == len(image)-1:
+                need = True
+                continue
+            if gif_durations[i+1] // speed > 20:
+                need = True
     # 保存新GIF
-    image[0].save(
-        output_path,
-        save_all=True,
-        append_images=image[1:],
-        duration=gif_durations,
-        loop=0,  # 0表示无限循环
-        disposal=2  # 帧刷新方式，避免残影
-    )
+    image = temp
+    gif_durations = temp_durations
+    output_path = f"{img_output_path}/speed/{message['sender']['user_id']}_mirror.gif"
+    save_gif(image, gif_durations, output_path)
+    msg = MessageChain([])
+    if cuted: msg.add("\n该图速度过快")
+    msg.add(ImageMessage(f"file://{bot.localtion}/{output_path}"))
+    callback = await bot.reply_to_message(message,msg)
+    log(f"{callback}", needPrint=(bot.testMode))
+#渐变速
+async def change_speed_gradient(bot, message, raw_message):
+    speed = 1.5
+    # 获取目标图片URL
+    image, url = await get_img(bot, message, size_limit=3000000)
+    # 变速处理
+    #读取GIF的所有帧和时长
+    isGIF, image, gif_durations = get_img_frame(url)
+    if not image or not gif_durations:
+        log(f"读取GIF帧失败", needPrint=(bot.testMode))
+        return
+    if not isGIF:
+        log(f"该图片不是GIF", needPrint=(bot.testMode))
+        return
+    # 变速
+    temp, temp_durations = [], []
+    changed_temp, changed_temp_durations = [image], [gif_durations]
+    need_counter = 0
+    need = True
+    while len(image) > 2:
+        temp_1 = []
+        temp_durations_1 = []
+        for i in range(len(image)):
+            # 如果该帧需要
+            if need:
+                need_counter = 0
+                # 转换帧为RGBA，避免透明通道丢失
+                temp_1.append(image[i])
+                # 如果帧时长过短
+                # 下帧可按变速被抽取
+                if gif_durations[i] // speed < 20:
+                    temp_durations_1.append(20)
+                    try:
+                        if gif_durations[i+1] // speed < 20:
+                            need = False
+                    except IndexError:
+                        pass
+                # 否则正常变速
+                else:
+                    temp_durations_1.append(int(gif_durations[i] // speed))
+            # 如果该帧不需要
+            else:
+                cuted = True
+                # 按倍速抽帧
+                need_counter += 1
+                # 最后一帧保留
+                if need_counter >= (speed-1) or i == len(image)-1:
+                    need = True
+                    continue
+                if gif_durations[i+1] // speed > 20:
+                    need = True
+        image = temp_1
+        gif_durations = temp_durations_1
+        temp.extend(temp_1)
+        temp_durations.extend(temp_durations_1)
+        changed_temp.append(temp_1)
+        changed_temp_durations.append(temp_durations_1)
+    while len(changed_temp) > 0:
+        temp.extend(changed_temp.pop())
+        temp_durations.extend(changed_temp_durations.pop())
+    # 保存新GIF
+    image = temp
+    gif_durations = temp_durations
+    output_path = f"{img_output_path}/speed/{message['sender']['user_id']}_mirror.gif"
+    save_gif(image, gif_durations, output_path)
     msg = ImageMessage(f"file://{bot.localtion}/{output_path}")
     callback = await bot.reply_to_message(message,msg)
     log(f"{callback}", needPrint=(bot.testMode))
-
 
 
 # == Tools ==
@@ -462,16 +509,6 @@ def image_to_c(image):
     if bbox:
         image = result.crop(bbox)
     return image
-# gif -> frame_list
-def get_img_frame(gif_path):
-    # 读取原GIF的所有帧和时长
-    gif_frames = []
-    gif_durations = []
-    reader = imageio.get_reader(gif_path)
-    for frame in reader:
-        gif_frames.append(Image.fromarray(frame))
-        gif_durations.append(reader.get_meta_data()['duration'])
-    return [gif_frames, gif_durations]
 # paste img to gif
 def make_up_gif(gif_frames, img, img_1, positions, positions_1):
     if len(positions)!=len(gif_frames) or len(positions_1)!=len(gif_frames):
@@ -489,3 +526,112 @@ def make_up_gif(gif_frames, img, img_1, positions, positions_1):
         frame = frame.convert("RGB")
         new_frames.append(frame)
     return new_frames
+#获取目标图片
+async def get_img_from_msg(bot, messages, size_limit=5000000):
+    reply_id, imageName, url = None, None, None
+    #查找图片消息和回复消息
+    log("正在查找消息", needPrint=(bot.testMode))
+    for ms in messages:
+        log(f"正在检查消息: {ms}", needPrint=(bot.testMode))
+        if ms["type"] == "reply":
+            reply_id = ms["data"]["id"]
+            break
+        if ms["type"] == "image":
+            log(f"图片size: {ms["data"]["file_size"]}", needPrint=(bot.testMode))
+            if int(ms["data"]["file_size"]) >= size_limit:
+                log("图片过大，无法处理", needPrint=(bot.testMode))
+                msg = MessageChain(["\n图片过大，无法处理"])
+                await feedback(bot, message, msg)
+                continue
+            imageName = ms["data"]["file"]
+            url = ms["data"]["url"]
+            break
+    return reply_id, imageName, url
+#获取目标图片（包括回复消息中的图片）
+async def get_img(bot, message, size_limit=5000000):
+    messages = message["message"]
+    reply_id, imageName, url = await get_img_from_msg(bot, messages, size_limit)
+    if reply_id == None and url == None: 
+        log(f"未找到回复消息", needPrint=(bot.testMode))
+        return
+    #如果未找到图片消息但找到了回复消息，则获取回复消息中的图片
+    if url == None and imageName == None:
+        try:
+            reply_msg = await bot.get_msg(reply_id)
+            reply_msg = reply_msg["data"]["message"]
+            log(f"{reply_msg}", needPrint=(bot.testMode))
+            reply_id, imageName, url = await get_img_from_msg(bot, reply_msg, size_limit)
+        except Exception as e:
+            log(f"获取回复消息失败: {e}", needPrint=(bot.testMode))
+            log(f"{traceback.format_exc()}", needPrint=(bot.testMode))
+    if imageName == None or url == None:
+        log(f"未找到图片消息", needPrint=(bot.testMode))
+        return
+    #获取图片
+    image = None
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        image_data = BytesIO(response.content)
+        image = Image.open(image_data)
+    except Exception as e:
+        tb = e.__traceback__
+        formatted_tb = ''.join(traceback.format_tb(tb))
+        log(formatted_tb)
+        return
+    if image == None:
+        log(f"打开图片失败", needPrint=(bot.testMode))
+        return
+    return image, url
+#gif -> frame_list and duration_list
+@reloading
+def get_img_frame(gif_path):
+    gif_frames, gif_durations = [], []
+    reader = imageio.get_reader(gif_path)
+    for frame in reader:
+        img = Image.fromarray(frame).convert("RGBA")
+        background = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        composed = Image.alpha_composite(background, img)
+        gif_frames.append(composed)
+        try:
+            gif_durations.append(reader.get_meta_data()['duration'])
+        except: pass
+    if len(gif_frames) == 0: return False, gif_frames, None
+    return True, gif_frames, gif_durations
+#
+@reloading
+def save_gif(frames, durations, output_path, del_back=False):
+    if del_back:
+        frames[-1].save(
+            output_path,
+            save_all=True,
+            disposal=2,  # 帧刷新方式，避免残影
+            append_images=frames[1:],
+            duration=durations,
+            loop=0,  # 0表示无限循环
+            transparency=0,  # 设置透明色索引为0
+            optimize=False  # 禁用优化，保留所有帧的完整信息
+        )
+    else:
+        frames[-1].save(
+            output_path,
+            save_all=True,
+            disposal=2,  # 帧刷新方式，避免残影
+            append_images=frames[1:],
+            duration=durations,
+            loop=0  # 0表示无限循环
+        )
+#
+def get_command_direction(command):
+    target_l, target_h = None, None
+    if len(command) > 0:
+        if command[0] == "左":
+            target_l = "left"
+        elif command[0] == "右":
+            target_l = "right"
+        elif command[0] == "上":
+            target_h = "up"
+        elif command[0] == "下":
+            target_h = "down"
+    if not target_l and not target_h: target_l = "left"
+    return target_l, target_h
