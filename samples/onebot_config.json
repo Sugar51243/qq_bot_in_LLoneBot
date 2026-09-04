@@ -1,0 +1,7 @@
+{
+    "uri": "ws://127.0.0.1:3001",
+    "owner": [],
+    "allowSlash": true,
+    "ban_user": [],
+    "ban_group": []
+}
