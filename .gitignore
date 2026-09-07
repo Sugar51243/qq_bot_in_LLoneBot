@@ -33,7 +33,9 @@ env/
 Thumbs.db
 
 # Runtime output
+logs/
 *.log
 
 # Config and Data
 config.yaml
+data/
