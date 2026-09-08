@@ -1,22 +1,37 @@
 
+import os, sys, time, threading
+
 from src.config_reader.config_reader import read_plugin_config
 from src.project_locator.project_locator import get_project_location
 from src.core.register import get_plugin_location, list_plugins, sreach_enabled_plugin, sreach_enabled_scene, sreach_by_scene_id, sreach_by_plugin_id
 from src.core.register import register, unenable
-from src.core.register import list_plugin_ids, get_plugin_location_by_id
+from src.core.register import list_plugin_ids, get_plugin_location_by_id, delete_scene_records
+from src.core import request_center
 from OneBotConnecter.loger.log_info import error, log
-from OneBotConnecter.types import ForwardChain, NodeMessage
-import os
+from OneBotConnecter.types import ForwardChain, NodeMessage, MessageChain
+
+#管理员帮助文件
+admin_help_path = os.path.join(get_project_location(), "src", "core", "admin_help.txt")
+
+#待确认退群场景
+waiting_leave = []
 
 
 def on_all_case(bot, message) -> bool: #call case including message, poke, request ...
     if "message" in message.event_type:
         return on_msg(bot, message=message)
+    return on_event(bot, message=message)
 
 def on_msg(bot, message) -> bool: # message
     handled = False
     handled = handle_noraml_order(bot=bot, message=message) or handle_test_order(bot=bot, message=message)
     return handled
+
+def on_event(bot, message) -> bool: # notice, request ...
+    #请求事件(入群/好友申请)为内置常驻功能
+    if message.raw_data.get("post_type") == "request":
+        return request_center.handle_request(bot, message)
+    return False
 
 # handling command
 def handle_noraml_order(bot, message):
@@ -36,7 +51,85 @@ def handle_noraml_order(bot, message):
     elif message.command in ["可启用功能", "可启用"]:
         handle_unenable_function_list_command(message=message)
         return True
+    # == 内置管理员指令 ==
+    elif message.command in ["管理员帮助", "管理帮助", "admin"]:
+        handle_admin_help_command(bot=bot, message=message)
+        return True
+    elif message.command in ["重启"]:
+        handle_restart_command(bot=bot, message=message)
+        return True
+    elif message.command in ["退群"]:
+        handle_leave_command(bot=bot, message=message)
+        return True
+    elif message.command in ["确认"] and message.scene_id in waiting_leave:
+        leave_group(bot=bot, message=message)
+        return True
+    elif message.command in ["取消"] and message.scene_id in waiting_leave:
+        waiting_leave.remove(message.scene_id)
+        message.reply_message(MessageChain([f"\n退群动作已取消。"]))
+        return True
+    elif "同意" in message.text and is_owner(bot=bot, message=message):
+        request_center.handle_approve(bot, message)
+        return True
+    elif message.command in ["添加白名单"] and is_owner(bot=bot, message=message):
+        request_center.handle_add_allow(bot, message)
+        return True
     return False
+
+def is_owner(bot, message) -> bool:
+    return str(message.user_id) in [str(owner_id) for owner_id in bot.bot.owner]
+
+#管理员帮助
+def handle_admin_help_command(bot, message):
+    if not is_owner(bot=bot, message=message):
+        message.reply_message(MessageChain(["权限不足"]))
+        return
+    reply_message = ForwardChain(read_help_file(admin_help_path))
+    help_text = '''帮助文件解读帮助:
+    (): 可选参数
+    <>: 必填参数
+    ~: 指令别称
+    →: 指令功能解释
+    例: 指令使用例'''
+    reply_message.add(help_text)
+    message.reply_message(reply_message)
+
+#重启
+def handle_restart_command(bot, message):
+    if not is_owner(bot=bot, message=message):
+        message.reply_message(MessageChain(["权限不足"]))
+        return
+    message.reply_message(MessageChain(["程序即将重启"]))
+    log("程序即将重启...")
+    #延迟重启以留出消息发送时间
+    threading.Thread(target=lambda: (time.sleep(2), os.execv(sys.executable, ['python'] + sys.argv)), daemon=True).start()
+
+#退群
+def handle_leave_command(bot, message):
+    if "group" not in message.scene_id:
+        message.reply_message(MessageChain([f"私聊不可使用退群指令"]))
+        return
+    if message.scene_id in waiting_leave:
+        waiting_leave.remove(message.scene_id)
+        leave_group(bot=bot, message=message)
+        return
+    #权限检查: 群主/管理
+    try:
+        member_data = bot.get_group_member_info(int(message.raw_data.get("group_id")), int(message.user_id))
+        role = member_data.data.role
+        if role not in ["owner", "admin"]:
+            raise Exception("权限不足")
+    except Exception:
+        message.reply_message(MessageChain([f"你并非该群管理/群主"]))
+        return
+    message.reply_message(MessageChain([f'\n小生物将退出本群。\n请再次输入指令或发送"确认"以确认退群\n误触发请发送"取消"']))
+    waiting_leave.append(message.scene_id)
+
+def leave_group(bot, message):
+    message.reply_message(MessageChain([f"小生物将退群"]))
+    bot.set_group_leave(message.raw_data.get("group_id"))
+    delete_scene_records(scene_id=message.scene_id)
+    log(f"已退群[{message.scene_id}]并清理注册记录")
 
 def handle_test_order(bot, message):
     if message.user_id not in bot.bot.owner: return False

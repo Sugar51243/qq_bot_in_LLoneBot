@@ -38,4 +38,8 @@ logs/
 
 # Config and Data
 config.yaml
-data/
+data/db
+data/plugin/tsugu_plugin
+data/plugin/pjsk/temp
+data/plugin/gif_creator/output
+old_data

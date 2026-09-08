@@ -55,7 +55,10 @@ def handle_message(bot, message):
         file = get_plugin_location(plugin_folder=plugin_name)
         plugin_config = read_plugin_config(file)
         plugin_id = plugin_config.get("plugin_id")
-        if not plugin_id or plugin_id not in permissions:
+        if not plugin_id:
+            log(f"{plugin_name} 未定义plugin_id")
+            continue
+        if plugin_id not in permissions:
             log(f"{plugin_name} not enabled on [{message.scene_id}]")
             continue
         order_handled = active_plugin(plugin_name, bot, message) or order_handled

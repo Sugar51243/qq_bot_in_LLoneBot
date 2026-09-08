@@ -116,6 +116,13 @@ def sreach_by_plugin_id(plugin_id: str):
 def test_database():
     return get_all_data_from(path=permission_db, table=table_name)
 
+def delete_scene_records(scene_id: str):
+    """删除场景的全部插件注册记录(如小生物退群时)"""
+    create_database()
+    global table_name
+    sta = f'DELETE FROM {table_name} WHERE scene_id = "{scene_id}";'
+    call_database(path=permission_db, sta=sta)
+
 def list_plugins():
     location = os.path.join(get_project_location(), "src", "plugins")
     if not os.path.isdir(location):
