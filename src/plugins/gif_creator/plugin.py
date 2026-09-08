@@ -53,7 +53,7 @@ def on_msg(bot, message) -> bool: # message
                     output_path = outputGIF
                     )
                 msg = ImageMessage(outputGIF)
-                callback = bot.send_group_msg(message.raw_data.get("group_id"), msg)
+                callback = feedback(message, msg)
                 log(f"{callback.raw_data}")
             except Exception as e:
                 tb = e.__traceback__
@@ -75,7 +75,7 @@ def on_msg(bot, message) -> bool: # message
                     user_2 = avatar_path_1,
                     output_path = outputGIF)
                 msg = ImageMessage(outputGIF)
-                callback = bot.send_group_msg(message.raw_data.get("group_id"), msg)
+                callback = feedback(message, msg)
                 log(f"{callback.raw_data}")
             except Exception as e:
                 tb = e.__traceback__

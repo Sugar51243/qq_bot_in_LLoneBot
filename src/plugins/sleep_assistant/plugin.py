@@ -104,7 +104,7 @@ def _handle(bot, message) -> bool:
         #如果新消息的时间戳比上次消息的时间戳大超过24小时，说明用户很久没有发消息了，更新最后消息时间并返回
         if user_data[3]: non_good_night(user_id)
         if sleep_duration >= 24:
-            bot.send_msg(user_id=user_id, message=MessageChain(["昨天没发过信息呢？是很忙吗？"]), group_id=message.raw_data.get("group_id", None))
+            feedback(message, MessageChain(["昨天没发过信息呢？是很忙吗？"]))
             log(f"用户{user_id}距离上次消息的时间超过24小时，更新最后消息时间并返回")
         #
         elif old_message_isSleep and new_message_isWakeUp and sleep_duration > 4:
@@ -113,7 +113,7 @@ def _handle(bot, message) -> bool:
             good_morning(bot, message, user_id, user_data)
         #
         elif old_message_isSleep and new_message_isWakeUp and not new_message_isSleep and sleep_duration < 2 and not user_data[3]:
-            bot.send_msg(user_id=message.raw_data.get("user_id"), message=MessageChain(["怎么熬夜了？"]), group_id=message.raw_data.get("group_id", None))
+            feedback(message, MessageChain(["怎么熬夜了？"]))
         #
         else:
             if user_data[3]:
@@ -123,8 +123,7 @@ def _handle(bot, message) -> bool:
                     piece_sleep_info(bot, message, user_id, user_data, now_time)
                 else:
                     log(f"用户{user_id}距离上次消息的时间不到1小时，假设用户还没有睡，发送提醒消息")
-                    send_message = MessageChain(["时间不足，已取消晚安记录"])
-                    bot.send_msg(user_id=user_id, message=send_message, group_id=message.raw_data.get("group_id", None))
+                    feedback(message, MessageChain(["时间不足，已取消晚安记录"]))
         return True
     except Exception as e:
         tb = e.__traceback__

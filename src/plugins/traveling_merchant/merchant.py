@@ -91,6 +91,7 @@ def hour_to_round(hour):
 
 def only_weekend_items(data):
     if not data: return True
+    if data.get("lastFetchError", ""): return True
     items = data.get("items", [])
     for item in items:
         if item.get("rounds", None) != [1, 2, 3, 4]:
