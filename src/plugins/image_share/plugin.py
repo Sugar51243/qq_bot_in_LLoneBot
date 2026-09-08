@@ -5,6 +5,7 @@
 # 本文件负责指令路由与上传流程，数据层位于db.py
 
 import os, hashlib, requests, traceback
+import random
 from OneBotConnecter.types import MessageChain, ImageMessage
 from OneBotConnecter.loger.log_info import log
 from src.db_handler.plugin_db import get_plugin_state, dumps, loads
@@ -27,7 +28,7 @@ def on_all_case(bot, message) -> bool: #call case including message, poke, reque
 
 def on_msg(bot, message) -> bool: # message
     raw_message = message.text
-    if not raw_message: return False
+    if not raw_message and str(message.user_id) not in list(waiting_upload().keys()): return False
     if "添加" in raw_message:
         raw_message = raw_message[raw_message.index("添加")+2:].strip()
         if raw_message:
@@ -40,6 +41,7 @@ def on_msg(bot, message) -> bool: # message
         return True
     #等待上传状态中收到图片 => 自动上传
     if str(message.user_id) in list(waiting_upload().keys()):
+        print("test")
         image_list = []
         for msg in message.message:
             if msg.type == "image":
@@ -47,15 +49,15 @@ def on_msg(bot, message) -> bool: # message
         if image_list:
             name_list = waiting_upload()[str(message.user_id)]
             uploaded = upload_image(bot, message, name_list, image_list)
-            end_upload(message, uploaded)
+            feedback(message, MessageChain(["已上传图片, 结束上传请发送“结束”"]))
             return True
     #看看<图片分类名称> => 获取该分类图片
     if raw_message[0:2] == "看看":
         name = raw_message[2:].strip()
         images = getImage(name)
         if images:
-            for image_id in images:
-                feedback(message, ImageMessage(os.path.join(image_database, f"{image_id}.png")))
+            image_id = images[random.randint(0,len(images))-1]
+            feedback(message, ImageMessage(os.path.join(image_database, f"{image_id}.png")))
             return True
         if name:
             feedback(message, MessageChain([f"未有分类[{name}]的图片"]))
