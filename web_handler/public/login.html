@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>登录 · 小生物v2 管理面板</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="login-card" id="login-form" autocomplete="off">
+      <h1>🐾 小生物v2 管理面板</h1>
+      <p class="sub">请使用管理员账号与机器人账号登录</p>
+
+      <label>
+        <span>管理员账号</span>
+        <input type="text" name="username" required autocomplete="username" placeholder="在 web_handler/config.yaml 中配置">
+      </label>
+      <label>
+        <span>管理员密码</span>
+        <input type="password" name="password" required autocomplete="current-password" placeholder="请输入密码">
+      </label>
+      <label>
+        <span>机器人账号（机器人QQ号）</span>
+        <input type="text" name="botQq" required inputmode="numeric" placeholder="机器人的QQ号">
+      </label>
+
+      <div class="error-box" id="login-error" hidden></div>
+      <button type="submit" class="btn primary" id="btn-login">登 录</button>
+
+      <div class="onebot-hint" id="onebot-hint">正在检测 OneBot 连接状态…</div>
+    </form>
+  </div>
+  <script src="/js/common.js"></script>
+  <script src="/js/login.js"></script>
+</body>
+</html>

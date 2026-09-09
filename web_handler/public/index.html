@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>主页 · 小生物v2 管理面板</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🐾 小生物v2 管理面板<small>web_handler</small></div>
+    <nav>
+      <a href="/index.html">主页</a>
+      <a href="/files.html">项目架构</a>
+      <a href="/db.html">数据库管理</a>
+    </nav>
+    <div class="spacer"></div>
+    <span class="badge" id="onebot-badge">OneBot: 检测中…</span>
+    <span class="user" id="top-user"></span>
+    <button class="btn small" id="btn-logout">退出登录</button>
+  </header>
+
+  <main class="container">
+    <h2 class="page-title">功能入口</h2>
+    <p class="page-desc">以下页面均需登录后访问；未登录或会话过期将自动跳回登录页</p>
+
+    <div class="cards">
+      <a class="card" href="/files.html">
+        <div class="icon">📁</div>
+        <div class="t">项目架构</div>
+        <div class="d">从根目录浏览并修改整个小生物v2项目文件夹：查看与编辑代码文件；删除、新增、查看 data 文件夹内的配置、图片、音频等所有文件。</div>
+      </a>
+      <a class="card" href="/db.html">
+        <div class="icon">🗄️</div>
+        <div class="t">数据库管理</div>
+        <div class="d">以表格方式查看与修改 data/db 下所有数据库：单独删除/新增一行数据、修改数据内容，支持在多个数据库与表格间切换。</div>
+      </a>
+    </div>
+
+    <div class="info-box">
+      已登录：<b id="login-user">…</b> ｜ OneBot 状态：<span id="login-onebot">检测中…</span>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/index.js"></script>
+</body>
+</html>

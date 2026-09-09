@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>项目架构 · 小生物v2 管理面板</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🐾 小生物v2 管理面板<small>web_handler</small></div>
+    <nav>
+      <a href="/index.html">主页</a>
+      <a href="/files.html">项目架构</a>
+      <a href="/db.html">数据库管理</a>
+    </nav>
+    <div class="spacer"></div>
+    <span class="badge" id="onebot-badge">OneBot: 检测中…</span>
+    <span class="user" id="top-user"></span>
+    <button class="btn small" id="btn-logout">退出登录</button>
+  </header>
+
+  <main class="container">
+    <h2 class="page-title">项目架构</h2>
+    <p class="page-desc">浏览与修改整个小生物v2项目文件夹（根目录：小生物v2）。代码文件可在线编辑保存；日志文件（.log）以只读模式实时跟踪查看；数据库文件（.db）点击"打开数据库"进入数据库管理页。</p>
+
+    <div class="toolbar">
+      <div class="breadcrumb" id="crumb"><a href="#" data-path="">项目根</a></div>
+      <button class="btn" id="btn-up">⬆ 上一级</button>
+      <button class="btn ghost" id="btn-refresh">🔄 刷新</button>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn" id="btn-mkdir">📁 新建文件夹</button>
+      <button class="btn" id="btn-newfile">📄 新建文件</button>
+      <button class="btn primary" id="btn-upload">⬆ 上传文件</button>
+      <input type="file" id="file-input" multiple hidden>
+    </div>
+
+    <div class="file-table">
+      <div class="frow head">
+        <span>名称</span><span>大小</span><span>修改时间</span><span style="text-align:right">操作</span>
+      </div>
+      <div id="file-rows"></div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/files.js"></script>
+</body>
+</html>

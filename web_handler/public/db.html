@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>数据库管理 · 小生物v2 管理面板</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🐾 小生物v2 管理面板<small>web_handler</small></div>
+    <nav>
+      <a href="/index.html">主页</a>
+      <a href="/files.html">项目架构</a>
+      <a href="/db.html">数据库管理</a>
+    </nav>
+    <div class="spacer"></div>
+    <span class="badge" id="onebot-badge">OneBot: 检测中…</span>
+    <span class="user" id="top-user"></span>
+    <button class="btn small" id="btn-logout">退出登录</button>
+  </header>
+
+  <div class="db-layout">
+    <aside class="db-side">
+      <div class="side-title">🗄️ 数据库列表（data/db）</div>
+      <div id="db-list"></div>
+    </aside>
+
+    <main class="db-main">
+      <div class="db-head">
+        <span class="loc">当前数据库：<b id="cur-db">—</b></span>
+        <span class="loc">当前表格：<select id="table-select" disabled><option>—</option></select></span>
+        <span class="loc">排序：<select id="sort-select" disabled title="按列或索引排序；也可直接点击表格列头切换升降序"><option value="">默认（rowid 升序）</option></select></span>
+        <span class="loc">搜索：<input type="search" id="search-input" class="search-input" placeholder="关键词过滤（全列匹配）…" title="对全列（含 rowid）做子串匹配，支持与排序组合使用；回车立即查询"></span>
+        <span class="spacer"></span>
+        <button class="btn small" id="btn-refresh">🔄 刷新</button>
+        <button class="btn primary" id="btn-insert" disabled>＋ 新增行</button>
+      </div>
+      <div class="db-table-wrap" id="table-wrap">
+        <div class="empty-hint">← 请在左侧选择一个数据库，再选择要查看的表格</div>
+      </div>
+      <div class="pager">
+        <span id="total-info">—</span>
+        <span class="spacer"></span>
+        <select id="page-size">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="500">500</option>
+        </select>
+        <span>行/页</span>
+        <button class="btn small" id="btn-prev">上一页</button>
+        <span>第 <input type="number" id="page-input" min="1" value="1"> / <span id="page-total">1</span> 页</span>
+        <button class="btn small" id="btn-next">下一页</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/db.js"></script>
+</body>
+</html>
