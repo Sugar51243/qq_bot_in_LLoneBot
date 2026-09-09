@@ -25,8 +25,9 @@
   <main class="container">
     <h2 class="page-title">数据统计</h2>
     <p class="page-desc">
-      统计由机器人实时采集（写入 data/db/stats.db，可在"数据库管理"中查看）。
-      口径：<b>信息</b> = QQ 消息收发；<b>接口</b> = 与 OneBot 的全部协议流量（上行=收到的全部事件，不含心跳；下行=全部 API 调用）；<b>指令触发</b> = 被核心/插件成功处理的消息事件。每 10 秒自动刷新。
+      统计由机器人实时采集（写入 data/db/stats.db）。频率 = 历史日均（总量 ÷ 统计天数，自首次记录起，不足 1 天按 1 天计）；
+      群聊场景来自 get_group_list 轮询（计入接口下行）与消息事件，私聊场景自统计上线累计；
+      "最常触发指令（不计插件）"为全部插件 + 内置指令的统一指令名排行。点击卡片查看 年/月/日/小时 粒度详情（折线图/文本）。每 10 秒自动刷新。
     </p>
 
     <div class="toolbar">
@@ -35,7 +36,7 @@
       <button class="btn ghost" id="btn-refresh">🔄 刷新</button>
     </div>
 
-    <div class="stat-grid" id="stats-grid"><div class="empty-hint">加载中…</div></div>
+    <div id="stats-sections"><div class="empty-hint">加载中…</div></div>
   </main>
 
   <script src="/js/common.js"></script>

@@ -9,6 +9,7 @@ const { verifyLogin, getSession, requireAuth, setSessionCookie, clearSessionCook
 const { safeResolve, isProtected } = require('./paths');
 const fsops = require('./fsops');
 const dbmod = require('./db');
+const statsmod = require('./stats');
 const { getLoginInfo } = require('./onebot');
 const { parseMultipart } = require('./multipart');
 const { isInline, contentType } = require('./mime');
@@ -237,18 +238,25 @@ function createRouter(config) {
 
     // ============ 数据统计 ============
     ['GET', /^\/api\/stats$/, true, (req, res) => {
-      // 计数由机器人运行时写入 data/db/stats.db；库不存在/读取失败一律按无数据返回（不 404）
-      if (!dbmod.findDb('stats')) return sendJson(res, 200, { available: false, counters: {} });
+      // 数据由机器人运行时写入 data/db/stats.db；库不存在/读取失败一律按无数据返回（不 404）
       try {
-        const db = dbmod.openDb('stats', { readOnly: true });
-        try {
-          const counters = {};
-          for (const r of db.prepare('SELECT key, value FROM counters').all()) counters[r.key] = Number(r.value);
-          sendJson(res, 200, { available: true, counters });
-        } finally { db.close(); }
+        sendJson(res, 200, statsmod.readStatsSummary());
       } catch (e) {
         console.log(`[小生物v2面板] 读取统计失败：${e.message}`);
         sendJson(res, 200, { available: false, counters: {} });
+      }
+    }],
+    ['GET', /^\/api\/stats\/detail$/, true, (req, res, ctx) => {
+      try {
+        sendJson(res, 200, statsmod.readStatsDetail(
+          ctx.query.get('key') || '',
+          ctx.query.get('unit') || 'day',
+          ctx.query.get('kind') || null
+        ));
+      } catch (e) {
+        if (e && e.status) return sendJson(res, e.status, { error: e.message });
+        console.log(`[小生物v2面板] 统计详情失败：${e.message}`);
+        throw httpErr(500, '统计详情查询失败');
       }
     }],
 

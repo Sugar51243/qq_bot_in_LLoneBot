@@ -44,7 +44,8 @@ def handle_message(bot, message):
     # interpret message
     message = interpret_message(message=message, bot=bot)
     # core functions
-    order_handled = core_function.on_all_case(bot, message=message)
+    core_handled = core_function.on_all_case(bot, message=message)
+    order_handled = core_handled
     # load plugins
     plugins = list_plugins()
     permissions = sreach_enabled_plugin(message.scene_id)
@@ -62,10 +63,18 @@ def handle_message(bot, message):
         if plugin_id not in permissions:
             log(f"{plugin_name} not enabled on [{message.scene_id}]")
             continue
-        order_handled = active_plugin(plugin_name, bot, message) or order_handled
+        handled = active_plugin(plugin_name, bot, message)
+        if handled:
+            order_handled = True
+            stats_module.record_cmd_plugin(plugin_id, message.command)  # 统计：按插件分类排行
     end_time = datetime.now()
     current_time = end_time-start_time
     log(f"Handle message for [{message.scene_id}] in {current_time}")
-    # 统计：消息事件被核心/插件成功处理即计一次指令触发（通知/请求类事件不计）
-    if order_handled and message.raw_data.get("post_type") == "message":
-        stats_module.record_command()
+    # 统计：消息事件被核心/插件成功处理（通知/请求类事件不计指令）
+    if message.raw_data.get("post_type") == "message":
+        if core_handled and message.command:
+            stats_module.record_cmd_plugin("核心内置", message.command)  # 核心指令归入分类视图
+        if order_handled and message.command:
+            stats_module.record_cmd_any(message.command)  # 不计插件：全量指令名排行
+        if order_handled:
+            stats_module.record_command()

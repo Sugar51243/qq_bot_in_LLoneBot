@@ -155,28 +155,28 @@ function fmtTime(ms) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// —— 数据统计（主页与统计页共用）——
-// 7 项指标：5 项原始计数（机器人写入 data/db/stats.db）+ 2 项由前端相加
-const STAT_DEFS = [
-  { key: 'msg_receive', label: '信息接收次数', desc: '收到的 QQ 消息事件（群聊/私聊）' },
-  { key: 'msg_send', label: '信息发送次数', desc: '调用发送消息 API 的次数' },
-  { key: 'msg_total', label: '信息接收发送总次数', desc: '接收 + 发送', calc: (c) => (c.msg_receive || 0) + (c.msg_send || 0) },
-  { key: 'api_up', label: '接口上行次数', desc: '从 OneBot 收到的全部事件（消息/通知/请求/元事件，不含心跳）' },
-  { key: 'api_down', label: '接口下行次数', desc: '调用 OneBot API 的总次数（含查资料、踢人等）' },
-  { key: 'api_total', label: '接口上下行总次数', desc: '上行 + 下行', calc: (c) => (c.api_up || 0) + (c.api_down || 0) },
-  { key: 'cmd_trigger', label: '指令触发次数', desc: '被核心内置功能或插件成功处理的消息事件' },
+// —— 数据统计（主页精简版：仅总次数卡片）——
+const HOME_STAT_DEFS = [
+  { label: '信息接收总次数', desc: '收到的 QQ 消息事件（群聊/私聊）', get: (d) => d.counters.msg_receive },
+  { label: '信息发送总次数', desc: '调用发送消息 API 的次数', get: (d) => d.counters.msg_send },
+  { label: '接口上行总次数', desc: '从 OneBot 收到的全部事件（不含心跳）', get: (d) => d.counters.api_up },
+  { label: '接口下行总次数', desc: '调用 OneBot API 的总次数', get: (d) => d.counters.api_down },
+  { label: '指令触发总次数', desc: '被核心/插件成功处理的消息事件', get: (d) => d.counters.cmd_trigger },
+  { label: '已添加场景数', desc: '群聊（get_group_list 轮询 + 消息补充）+ 私聊（自统计上线累计）', get: (d) => (d.scenes ? d.scenes.total : null) },
+  { label: '已启用插件场景数', desc: 'permissions.db 中启用 ≥1 个插件的场景（群聊 + 私聊）', get: (d) => (d.scenesEnabled ? d.scenesEnabled.total : null) },
 ];
 
+// 首页渲染：/api/stats 数据 → 7 张总次数卡片（缺失显示 —）
 function renderStats(containerEl, data) {
   if (!containerEl) return;
   if (!data || !data.available) {
     containerEl.innerHTML = '<div class="empty-hint">暂无统计数据（机器人尚未运行或尚未产生统计）</div>';
     return;
   }
-  const c = data.counters || {};
-  containerEl.innerHTML = STAT_DEFS.map((d) => `
+  const num = (v) => (v == null ? '—' : Number(v).toLocaleString('zh-CN'));
+  containerEl.innerHTML = HOME_STAT_DEFS.map((d) => `
     <div class="stat-tile" title="${escapeHtml(d.desc)}">
-      <div class="stat-num">${(d.calc ? d.calc(c) : (c[d.key] || 0)).toLocaleString('zh-CN')}</div>
+      <div class="stat-num">${num(d.get(data))}</div>
       <div class="stat-label">${escapeHtml(d.label)}</div>
     </div>`).join('');
 }

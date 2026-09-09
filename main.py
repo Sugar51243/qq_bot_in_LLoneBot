@@ -55,6 +55,7 @@ def main():
     owner = config.get("owner", [])
     bot = OneBot(url=uri, call_function=on_message, owner=owner)
     stats_module.hook_send_to_server(bot)  # 统计：接口下行 + 信息发送（须在 run() 之前）
+    stats_module.start_group_listener(bot.handler.handler)  # 统计：已添加场景轮询
     load_plugin_listeners(bot=bot.handler.handler)
     bot.run()
 
