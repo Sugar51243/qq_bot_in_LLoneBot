@@ -22,7 +22,7 @@
       document.getElementById('btn-newfile').disabled = !writable;
       document.getElementById('btn-upload').disabled = !writable;
       if (!writable && data.path) {
-        toast('当前目录（面板自身）为只读保护目录，仅可浏览', 'info', 2600);
+        toast(t('files.roToast'), 'info', 2600);
       }
     } catch (err) {
       toast(err.message, 'error');
@@ -33,7 +33,7 @@
   function renderCrumb(relPath) {
     const parts = relPath ? relPath.split('/') : [];
     let acc = '';
-    let html = '<a href="#" data-path="">项目根</a>';
+    let html = `<a href="#" data-path="">${escapeHtml(t('files.root'))}</a>`;
     for (const p of parts) {
       acc = acc ? acc + '/' + p : p;
       html += '<span class="sep">/</span><a href="#" data-path="' + escapeHtml(acc) + '">' + escapeHtml(p) + '</a>';
@@ -63,7 +63,7 @@
 
   function renderRows(entries, truncated) {
     if (!entries.length) {
-      rowsEl.innerHTML = '<div class="empty-hint">（空目录）</div>';
+      rowsEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('files.empty'))}</div>`;
       return;
     }
     const html = entries.map((e) => {
@@ -71,24 +71,24 @@
       const enc = encodeURIComponent(full);
       const acts = [];
       if (e.type === 'dir') {
-        acts.push(`<button class="btn small" data-open="${escapeHtml(enc)}">打开</button>`);
+        acts.push(`<button class="btn small" data-open="${escapeHtml(enc)}">${escapeHtml(t('files.open'))}</button>`);
       } else if (e.isDb) {
-        acts.push(`<button class="btn small primary" data-db="${escapeHtml(e.name.slice(0, -3))}">🗄 打开数据库</button>`);
+        acts.push(`<button class="btn small primary" data-db="${escapeHtml(e.name.slice(0, -3))}">${escapeHtml(t('files.openDb'))}</button>`);
       } else if (e.ext === '.log') {
         // 日志文件：只读实时跟踪查看（不进入编辑器）
-        acts.push(`<button class="btn small" data-log="${escapeHtml(enc)}">📜 查看日志</button>`);
+        acts.push(`<button class="btn small" data-log="${escapeHtml(enc)}">${escapeHtml(t('files.viewLog'))}</button>`);
       } else if (e.editable) {
         // 写保护目录（面板自身）内文件：只读查看
-        acts.push(`<button class="btn small" data-edit="${escapeHtml(enc)}" data-ro="${e.writable ? '0' : '1'}">${e.writable ? '编辑' : '查看'}</button>`);
+        acts.push(`<button class="btn small" data-edit="${escapeHtml(enc)}" data-ro="${e.writable ? '0' : '1'}">${escapeHtml(e.writable ? t('common.edit') : t('files.view'))}</button>`);
       } else if (e.preview) {
-        acts.push(`<button class="btn small" data-preview="${escapeHtml(enc)}" data-pname="${escapeHtml(e.name)}">预览</button>`);
+        acts.push(`<button class="btn small" data-preview="${escapeHtml(enc)}" data-pname="${escapeHtml(e.name)}">${escapeHtml(t('files.preview'))}</button>`);
       }
-      acts.push(`<a class="btn small" href="/api/fs/raw?path=${enc}" target="_blank">下载</a>`);
+      acts.push(`<a class="btn small" href="/api/fs/raw?path=${enc}" target="_blank">${escapeHtml(t('common.download'))}</a>`);
       if (e.writable) {
-        acts.push(`<button class="btn small" data-rename="${escapeHtml(enc)}" data-name="${escapeHtml(e.name)}">重命名</button>`);
-        acts.push(`<button class="btn small danger" data-del="${escapeHtml(enc)}">删除</button>`);
+        acts.push(`<button class="btn small" data-rename="${escapeHtml(enc)}" data-name="${escapeHtml(e.name)}">${escapeHtml(t('files.rename'))}</button>`);
+        acts.push(`<button class="btn small danger" data-del="${escapeHtml(enc)}">${escapeHtml(t('common.delete'))}</button>`);
       } else {
-        acts.push(`<span class="fmeta" title="面板自身目录受写保护">🔒只读</span>`);
+        acts.push(`<span class="fmeta" title="${escapeHtml(t('files.roTitle'))}">${escapeHtml(t('files.readonly'))}</span>`);
       }
       return `<div class="frow" data-type="${e.type}">
         <span class="fname">
@@ -102,7 +102,7 @@
         <span class="facts">${acts.join('')}</span>
       </div>`;
     }).join('');
-    rowsEl.innerHTML = (truncated ? '<div class="trunc-note">⚠ 目录条目过多，仅显示前 10000 条</div>' : '') + html;
+    rowsEl.innerHTML = (truncated ? `<div class="trunc-note">${escapeHtml(t('files.truncNote'))}</div>` : '') + html;
     bindRowEvents();
   }
 
@@ -155,10 +155,10 @@
       <div class="editor-box">
         <div class="editor-head">
           <span class="path">${readOnly ? '🔒' : '📝'} ${escapeHtml(full)}</span>
-          <span class="dirty" id="ed-dirty" hidden>● 未保存</span>
+          <span class="dirty" id="ed-dirty" hidden>${escapeHtml(t('files.unsaved'))}</span>
           <span class="spacer"></span>
-          ${readOnly ? '<span class="dirty">面板自身目录只读</span>' : '<button class="btn small primary" id="ed-save">保存 (Ctrl+S)</button>'}
-          <button class="btn small" id="ed-close">关闭</button>
+          ${readOnly ? `<span class="dirty">${escapeHtml(t('files.panelRo'))}</span>` : `<button class="btn small primary" id="ed-save">${escapeHtml(t('files.saveBtn'))}</button>`}
+          <button class="btn small" id="ed-close">${escapeHtml(t('common.close'))}</button>
         </div>
         <textarea id="ed-text" spellcheck="false" ${readOnly ? 'readonly' : ''}></textarea>
       </div>`);
@@ -183,15 +183,15 @@
         await apiJson('/api/fs/write', { path: full, content: ta.value });
         data.content = ta.value;
         markDirty(false);
-        toast('已保存：' + full, 'success');
+        toast(t('files.saved', { p: full }), 'success');
       } catch (err) {
-        toast('保存失败：' + err.message, 'error');
+        toast(t('files.saveFail', { e: err.message }), 'error');
       }
     };
     overlay.querySelector('#ed-save').addEventListener('click', doSave);
     overlay.querySelector('#ed-close').addEventListener('click', async () => {
       if (ta.value !== data.content) {
-        if (!(await confirmDlg('关闭编辑器', '文件有未保存的修改，确定放弃并关闭吗？'))) return;
+        if (!(await confirmDlg(t('files.closeTitle'), t('files.unsavedConfirm')))) return;
       }
       close();
     });
@@ -214,18 +214,18 @@
       <div class="editor-box">
         <div class="editor-head">
           <span class="path">📜 ${escapeHtml(full)}</span>
-          <span class="dirty" id="log-status">⏱ 自动刷新中</span>
+          <span class="dirty" id="log-status">${escapeHtml(t('files.logAuto'))}</span>
           <span class="dirty" id="log-time"></span>
           <span class="spacer"></span>
-          <input type="text" id="log-filter" class="log-filter" placeholder="🔍 过滤关键词…" autocomplete="off">
-          <label class="log-opt"><input type="checkbox" id="log-ci" checked>忽略大小写</label>
-          <button class="btn small" id="log-prev" title="上一个匹配">↑</button>
-          <button class="btn small" id="log-next" title="下一个匹配">↓</button>
+          <input type="text" id="log-filter" class="log-filter" placeholder="${escapeHtml(t('files.logFilterPh'))}" autocomplete="off">
+          <label class="log-opt"><input type="checkbox" id="log-ci" checked>${escapeHtml(t('files.logCi'))}</label>
+          <button class="btn small" id="log-prev" title="${escapeHtml(t('files.logPrevT'))}">↑</button>
+          <button class="btn small" id="log-next" title="${escapeHtml(t('files.logNextT'))}">↓</button>
           <span class="dirty" id="log-match" hidden></span>
-          <button class="btn small" id="log-toggle">⏸ 暂停刷新</button>
-          <button class="btn small" id="log-scroll">🔻 自动滚动：开</button>
-          <a class="btn small" href="/api/fs/raw?path=${encodeURIComponent(full)}" target="_blank">下载</a>
-          <button class="btn small" id="log-close">关闭</button>
+          <button class="btn small" id="log-toggle">${escapeHtml(t('files.logPause'))}</button>
+          <button class="btn small" id="log-scroll">${escapeHtml(t('files.logScrollOn'))}</button>
+          <a class="btn small" href="/api/fs/raw?path=${encodeURIComponent(full)}" target="_blank">${escapeHtml(t('common.download'))}</a>
+          <button class="btn small" id="log-close">${escapeHtml(t('common.close'))}</button>
         </div>
         <pre id="log-view" class="log-view" tabindex="0"></pre>
       </div>`);
@@ -253,11 +253,11 @@
 
     const alive = () => document.body.contains(overlay);
     const setStatus = () => {
-      if (errored) { statusEl.textContent = '⚠ 已停止（读取失败）'; return; }
-      statusEl.textContent = live ? '⏱ 自动刷新中' : '⏸ 已暂停';
+      if (errored) { statusEl.textContent = t('files.logStopped'); return; }
+      statusEl.textContent = live ? t('files.logAuto') : t('files.logPaused');
     };
     const setScrollBtn = () => {
-      scrollBtn.textContent = '🔻 自动滚动：' + (autoScroll ? '开' : '关');
+      scrollBtn.textContent = autoScroll ? t('files.logScrollOn') : t('files.logScrollOff');
     };
 
     // 追加内容并做缓冲裁剪（从行边界丢弃最早内容）
@@ -266,7 +266,7 @@
       if (fullText.length > LOG_BUFFER_MAX) {
         const cut = fullText.indexOf('\n', fullText.length - LOG_BUFFER_MAX);
         const from = cut === -1 ? fullText.length - LOG_BUFFER_MAX : cut + 1;
-        fullText = '…（缓冲区已满，较早内容已丢弃）…\n' + fullText.slice(from);
+        fullText = t('files.logBufferFull') + '\n' + fullText.slice(from);
         plainDirty = true;
       }
     };
@@ -293,12 +293,12 @@
         idx = nl + 1;
       }
       if (!matches) {
-        html = `<span class="empty-hint" style="display:block;padding:24px">没有匹配「${escapeHtml(filter)}」的行</span>`;
+        html = `<span class="empty-hint" style="display:block;padding:24px">${escapeHtml(t('files.logNoMatch', { k: filter }))}</span>`;
       }
       pre.innerHTML = html;
       if (autoScroll) pre.scrollTop = pre.scrollHeight;
       else pre.scrollTop = prevScroll; // 保持用户浏览位置（innerHTML 重建会清零）
-      matchEl.textContent = matches + ' 处匹配';
+      matchEl.textContent = t('files.logMatches', { n: matches });
       matchEl.hidden = false;
       navIdx = -1;
       renderedLen = fullText.length;
@@ -333,18 +333,18 @@
           if (!alive()) return;
           if (data.truncated) {
             // 首次截尾 / 文件被轮转清空 / 增量过大：重置视图
-            fullText = '…（已跳过较旧内容，仅显示文件尾部）…\n' + data.content;
+            fullText = t('files.logSkipped') + '\n' + data.content;
             plainDirty = true;
           } else if (data.content) {
             applyAppend(data.content);
           }
           offset = data.offset;
           if (data.truncated || data.content) renderContent(); // 无新内容时不重绘，保持浏览位置
-          timeEl.textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }) + ' · ' + fmtSize(data.size);
+          timeEl.textContent = t('files.logUpdatedAt', { t: new Date().toLocaleTimeString(locale(), { hour12: false }) }) + fmtSize(data.size);
         } catch (err) {
           if (!alive()) return;
           errored = true;
-          toast('日志读取失败，已停止自动刷新：' + err.message, 'error');
+          toast(t('files.logReadFail', { e: err.message }), 'error');
           setStatus();
         } finally {
           inFlight = false;
@@ -371,7 +371,7 @@
       } else {
         live = !live;
       }
-      toggleBtn.textContent = live ? '⏸ 暂停刷新' : '▶ 继续刷新';
+      toggleBtn.textContent = live ? t('files.logPause') : t('files.logResume');
       setStatus();
     });
     scrollBtn.addEventListener('click', () => {
@@ -435,8 +435,8 @@
       <div class="preview-box">
         <div class="phead">
           <span class="path">${escapeHtml(full)}</span>
-          <a class="btn small" href="${src}" target="_blank">新窗口打开</a>
-          <button class="btn small" data-act="close">关闭</button>
+          <a class="btn small" href="${src}" target="_blank">${escapeHtml(t('files.newWindow'))}</a>
+          <button class="btn small" data-act="close">${escapeHtml(t('common.close'))}</button>
         </div>
         ${media}
       </div>`).overlay.querySelector('[data-act="close"]').addEventListener('click', function () {
@@ -446,51 +446,51 @@
 
   // —— 重命名 / 删除 / 新建 ——
   async function doRename(full, oldName) {
-    const newName = await promptDlg('重命名', '新的名称：', oldName);
+    const newName = await promptDlg(t('files.renameTitle'), t('files.renameLabel'), oldName);
     if (!newName || newName === oldName) return;
     try {
       await apiJson('/api/fs/rename', { path: full, newName });
-      toast('已重命名', 'success');
+      toast(t('files.renamed'), 'success');
       load(cur);
     } catch (err) {
-      toast('重命名失败：' + err.message, 'error');
+      toast(t('files.renameFail', { e: err.message }), 'error');
     }
   }
 
   async function doDelete(full) {
-    if (!(await confirmDlg('删除确认', `确定删除以下内容吗？此操作不可恢复：\n\n${full}`))) return;
+    if (!(await confirmDlg(t('files.delTitle'), t('files.delConfirm', { full })))) return;
     try {
       await apiJson('/api/fs/delete', { path: full });
-      toast('已删除', 'success');
+      toast(t('files.deleted'), 'success');
       load(cur);
     } catch (err) {
-      toast('删除失败：' + err.message, 'error');
+      toast(t('files.delFail', { e: err.message }), 'error');
     }
   }
 
   async function doMkdir() {
-    const name = await promptDlg('新建文件夹', '文件夹名称：');
+    const name = await promptDlg(t('files.mkdirTitle'), t('files.mkdirLabel'));
     if (!name) return;
     const full = cur ? cur + '/' + name : name;
     try {
       await apiJson('/api/fs/mkdir', { path: full });
-      toast('已创建', 'success');
+      toast(t('files.created'), 'success');
       load(cur);
     } catch (err) {
-      toast('创建失败：' + err.message, 'error');
+      toast(t('files.createFail', { e: err.message }), 'error');
     }
   }
 
   async function doNewFile() {
-    const name = await promptDlg('新建文件', '文件名（如 test.py）：');
+    const name = await promptDlg(t('files.newfileTitle'), t('files.newfileLabel'));
     if (!name) return;
     const full = cur ? cur + '/' + name : name;
     try {
       await apiJson('/api/fs/write', { path: full, content: '' });
-      toast('已创建：' + name, 'success');
+      toast(t('files.createdFile', { n: name }), 'success');
       load(cur);
     } catch (err) {
-      toast('创建失败：' + err.message, 'error');
+      toast(t('files.createFail', { e: err.message }), 'error');
     }
   }
 
@@ -504,13 +504,13 @@
         fd.append('file', f);
         try {
           const r = await api('/api/fs/upload', { method: 'POST', body: fd });
-          toast(`已上传：${r.name}（${fmtSize(r.size)}）`, 'success');
+          toast(t('files.uploaded', { n: r.name, s: fmtSize(r.size) }), 'success');
           load(cur);
         } catch (err) {
           if (err.status === 409) {
-            if (await confirmDlg('覆盖确认', `"${f.name}" 已存在，是否覆盖？`)) await send(true);
+            if (await confirmDlg(t('files.overwriteTitle'), t('files.overwriteConfirm', { n: f.name }))) await send(true);
           } else {
-            toast(`上传 ${f.name} 失败：` + err.message, 'error');
+            toast(t('files.uploadFail', { n: f.name, e: err.message }), 'error');
           }
         }
       };
@@ -531,6 +531,9 @@
     if (e.target.files.length) uploadFiles([...e.target.files]);
     e.target.value = '';
   });
+
+  // 语言切换时重绘当前目录（按钮/提示文案随语言变化）
+  window.__i18nRerender.push(() => load(cur));
 
   load('');
 })();

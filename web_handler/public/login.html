@@ -4,35 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
-  <title>登录 · 小生物v2 管理面板</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <title data-i18n="title.login">登录 · 小生物v2 管理面板</title>
+  <link rel="stylesheet" href="/css/style.css?v=2">
+  <script src="/js/i18n.js?v=2"></script>
+  <script src="/js/theme.js?v=2"></script>
 </head>
 <body>
+  <div class="login-tools"><span class="lang-slot"></span><span class="theme-slot"></span></div>
   <div class="login-wrap">
     <form class="login-card" id="login-form" autocomplete="off">
-      <h1>🐾 小生物v2 管理面板</h1>
-      <p class="sub">请使用管理员账号与机器人账号登录</p>
+      <h1 data-i18n="brand.title">🐾 小生物v2 管理面板</h1>
+      <p class="sub" data-i18n="login.sub">请使用管理员账号与机器人账号登录</p>
 
       <label>
-        <span>管理员账号</span>
-        <input type="text" name="username" required autocomplete="username" placeholder="在 web_handler/config.yaml 中配置">
+        <span data-i18n="login.adminAccount">管理员账号</span>
+        <input type="text" name="username" required autocomplete="username" data-i18n-placeholder="login.adminPh">
       </label>
       <label>
-        <span>管理员密码</span>
-        <input type="password" name="password" required autocomplete="current-password" placeholder="请输入密码">
+        <span data-i18n="login.adminPassword">管理员密码</span>
+        <input type="password" name="password" required autocomplete="current-password" data-i18n-placeholder="login.passwordPh">
       </label>
       <label>
-        <span>机器人账号（机器人QQ号）</span>
-        <input type="text" name="botQq" required inputmode="numeric" placeholder="机器人的QQ号">
+        <span data-i18n="login.botAccount">机器人账号（机器人QQ号）</span>
+        <input type="text" name="botQq" required inputmode="numeric" data-i18n-placeholder="login.botPh">
       </label>
 
       <div class="error-box" id="login-error" hidden></div>
-      <button type="submit" class="btn primary" id="btn-login">登 录</button>
+      <button type="submit" class="btn primary" id="btn-login" data-i18n="login.btn">登 录</button>
 
-      <div class="onebot-hint" id="onebot-hint">正在检测 OneBot 连接状态…</div>
+      <div class="onebot-hint" id="onebot-hint" data-i18n="login.checking">正在检测 OneBot 连接状态…</div>
     </form>
   </div>
-  <script src="/js/common.js"></script>
-  <script src="/js/login.js"></script>
+  <script src="/js/common.js?v=2"></script>
+  <script src="/js/login.js?v=2"></script>
 </body>
 </html>

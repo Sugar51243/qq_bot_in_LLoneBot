@@ -1,4 +1,4 @@
-// 登录页逻辑
+// 登录页逻辑（文案走 i18n；OneBot 提示区由状态缓存重渲染，支持语言切换）
 'use strict';
 
 (function () {
@@ -6,6 +6,7 @@
   const errBox = document.getElementById('login-error');
   const btn = document.getElementById('btn-login');
   const hint = document.getElementById('onebot-hint');
+  let onebotOnline = null; // true=在线 false=离线 null=无法连接
 
   function showError(msg, isWarn) {
     errBox.hidden = false;
@@ -14,23 +15,26 @@
   }
 
   // OneBot 在线状态提示（未登录时接口只返回在线布尔值，不暴露机器人QQ）
+  function renderHint() {
+    if (onebotOnline === true) {
+      hint.innerHTML = '<span class="ok">●</span> ' + t('login.hintOnline');
+    } else if (onebotOnline === false) {
+      hint.innerHTML = '<span class="off">●</span> ' + t('login.hintOffline');
+    } else {
+      hint.innerHTML = '<span class="off">●</span> ' + t('login.hintNoConn');
+    }
+  }
+  window.__i18nRerender.push(renderHint);
+
   api('/api/onebot/status')
-    .then((st) => {
-      if (st.online) {
-        hint.innerHTML = '<span class="ok">●</span> OneBot 已在线：登录将进行<b>双重机器人账号核对</b>（静态比对 + 实时核对）';
-      } else {
-        hint.innerHTML = '<span class="off">●</span> OneBot 离线：登录仅做<b>静态机器人账号比对</b>（web_handler/config.yaml 的 botQq）';
-      }
-    })
-    .catch(() => {
-      hint.innerHTML = '<span class="off">●</span> 无法连接 OneBot，登录仅做静态机器人账号比对';
-    });
+    .then((st) => { onebotOnline = !!st.online; renderHint(); })
+    .catch(() => { onebotOnline = null; renderHint(); });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errBox.hidden = true;
     btn.disabled = true;
-    btn.textContent = '登录中…';
+    btn.textContent = t('login.loggingIn');
     const fd = new FormData(form);
     try {
       const r = await api('/api/login', {
@@ -43,15 +47,15 @@
         }),
       });
       if (r.ok) {
-        toast('登录成功，正在进入…', 'success');
-        if (!r.onebotOnline) toast('OneBot 离线，本次仅做了静态机器人账号比对', 'info', 4200);
+        toast(t('login.success'), 'success');
+        if (!r.onebotOnline) toast(t('login.staticOnly'), 'info', 4200);
         location.href = '/index.html';
       }
     } catch (err) {
-      // 401 = 账号密码错（红）；403 = 机器人账号问题（橙）
+      // 401 = 账号密码错（红）；403 = 机器人账号问题（橙）；文案来自服务端
       showError(err.message, err.status === 403);
       btn.disabled = false;
-      btn.textContent = '登 录';
+      btn.textContent = t('login.btn');
     }
   });
 })();

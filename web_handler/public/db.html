@@ -4,42 +4,59 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
-  <title>数据库管理 · 小生物v2 管理面板</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <title data-i18n="title.db">数据库管理 · 小生物v2 管理面板</title>
+  <link rel="stylesheet" href="/css/style.css?v=2">
+  <script src="/js/i18n.js?v=2"></script>
+  <script src="/js/theme.js?v=2"></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">🐾 小生物v2 管理面板<small>web_handler</small></div>
-    <nav>
-      <a href="/index.html">主页</a>
-      <a href="/files.html">项目架构</a>
-      <a href="/db.html">数据库管理</a>
-      <a href="/stats.html">数据统计</a>
+    <button class="nav-burger" id="nav-burger" data-i18n-title="top.menu">☰</button>
+    <div class="brand"><span data-i18n="brand.title">🐾 小生物v2 管理面板</span><small>web_handler</small></div>
+    <nav id="top-nav">
+      <a href="/index.html" data-i18n="nav.home">主页</a>
+      <a href="/files.html" data-i18n="nav.files">项目架构</a>
+      <a href="/db.html" data-i18n="nav.db">数据库管理</a>
+      <a href="/stats.html" data-i18n="nav.stats">数据统计</a>
     </nav>
     <div class="spacer"></div>
-    <span class="badge" id="onebot-badge">OneBot: 检测中…</span>
-    <span class="user" id="top-user"></span>
-    <button class="btn small" id="btn-logout">退出登录</button>
+    <span class="badge onebot-badge" id="onebot-badge" data-i18n="onebot.checking">OneBot: 检测中…</span>
+    <span class="user top-user" id="top-user"></span>
+    <span class="tb-tools"><span class="lang-slot"></span><span class="theme-slot"></span></span>
+    <button class="btn small" id="btn-logout" data-i18n="top.logout">退出登录</button>
+    <div class="mob-panel" id="mob-panel">
+      <nav>
+        <a href="/index.html" data-i18n="nav.home">主页</a>
+        <a href="/files.html" data-i18n="nav.files">项目架构</a>
+        <a href="/db.html" data-i18n="nav.db">数据库管理</a>
+        <a href="/stats.html" data-i18n="nav.stats">数据统计</a>
+      </nav>
+      <div class="mob-row">
+        <span class="badge onebot-badge" data-i18n="onebot.checking">OneBot: 检测中…</span>
+        <span class="user top-user"></span>
+      </div>
+    </div>
   </header>
 
-  <div class="db-layout">
+  <div class="db-layout" id="db-layout">
     <aside class="db-side">
-      <div class="side-title">🗄️ 数据库列表（data/db）</div>
+      <div class="side-title" data-i18n="db.sideTitle">🗄️ 数据库列表（data/db）</div>
       <div id="db-list"></div>
     </aside>
 
     <main class="db-main">
       <div class="db-head">
-        <span class="loc">当前数据库：<b id="cur-db">—</b></span>
-        <span class="loc">当前表格：<select id="table-select" disabled><option>—</option></select></span>
-        <span class="loc">排序：<select id="sort-select" disabled title="按列或索引排序；也可直接点击表格列头切换升降序"><option value="">默认（rowid 升序）</option></select></span>
-        <span class="loc">搜索：<input type="search" id="search-input" class="search-input" placeholder="关键词过滤（全列匹配）…" title="对全列（含 rowid）做子串匹配，支持与排序组合使用；回车立即查询"></span>
+        <button class="btn small" id="btn-dbs" data-i18n="db.dbs">🗄 数据库</button>
+        <span class="loc"><span data-i18n="db.curDb">当前数据库：</span><b id="cur-db">—</b></span>
+        <span class="loc"><span data-i18n="db.curTable">当前表格：</span><select id="table-select" disabled><option>—</option></select></span>
+        <span class="loc"><span data-i18n="db.sort">排序：</span><select id="sort-select" disabled data-i18n-title="db.sortT"><option value="">—</option></select></span>
+        <span class="loc"><span data-i18n="db.search">搜索：</span><input type="search" id="search-input" class="search-input" data-i18n-placeholder="db.searchPh" data-i18n-title="db.searchT"></span>
         <span class="spacer"></span>
-        <button class="btn small" id="btn-refresh">🔄 刷新</button>
-        <button class="btn primary" id="btn-insert" disabled>＋ 新增行</button>
+        <button class="btn small" id="btn-refresh" data-i18n="common.refresh">🔄 刷新</button>
+        <button class="btn primary" id="btn-insert" disabled data-i18n="db.insert">＋ 新增行</button>
       </div>
       <div class="db-table-wrap" id="table-wrap">
-        <div class="empty-hint">← 请在左侧选择一个数据库，再选择要查看的表格</div>
+        <div class="empty-hint" data-i18n="db.emptyHint">← 请在左侧选择一个数据库，再选择要查看的表格</div>
       </div>
       <div class="pager">
         <span id="total-info">—</span>
@@ -49,15 +66,15 @@
           <option value="100" selected>100</option>
           <option value="500">500</option>
         </select>
-        <span>行/页</span>
-        <button class="btn small" id="btn-prev">上一页</button>
-        <span>第 <input type="number" id="page-input" min="1" value="1"> / <span id="page-total">1</span> 页</span>
-        <button class="btn small" id="btn-next">下一页</button>
+        <span data-i18n="db.rowsPerPage">行/页</span>
+        <button class="btn small" id="btn-prev" data-i18n="db.prev">上一页</button>
+        <span><span data-i18n="db.pageBefore">第</span> <input type="number" id="page-input" min="1" value="1"> / <span id="page-total">1</span> <span data-i18n="db.pageAfter">页</span></span>
+        <button class="btn small" id="btn-next" data-i18n="db.next">下一页</button>
       </div>
     </main>
   </div>
 
-  <script src="/js/common.js"></script>
-  <script src="/js/db.js"></script>
+  <script src="/js/common.js?v=2"></script>
+  <script src="/js/db.js?v=2"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 // 数据统计页逻辑：分类分区卡片 + 详情弹窗（年/月/日/小时 · 折线图/文本）
+// 文案全部走 i18n 键（titleKey/descKey/labelKey），切换语言后由 __i18nRerender 重渲染
 'use strict';
 
 (function () {
@@ -13,87 +14,87 @@
   const c = (d) => d.counters || {};
   const SECTIONS = [
     {
-      title: '消息与接口', desc: '信息 = QQ 消息收发；接口 = 与 OneBot 的全部协议流量（不含心跳）',
+      titleKey: 'stats.secMsg', descKey: 'stats.secMsgDesc',
       tiles: [
-        { label: '信息接收次数', kind: 'num', get: (d) => c(d).msg_receive, detail: { key: 'msg_receive' } },
-        { label: '信息发送次数', kind: 'num', get: (d) => c(d).msg_send, detail: { key: 'msg_send' } },
-        { label: '信息接收发送总次数', kind: 'num', get: (d) => (c(d).msg_receive || 0) + (c(d).msg_send || 0), detail: { key: 'msg_total' } },
-        { label: '信息接收频率', kind: 'freq', get: (d) => d.freq.msg_receive, detail: { key: 'msg_receive' } },
-        { label: '信息发送频率', kind: 'freq', get: (d) => d.freq.msg_send, detail: { key: 'msg_send' } },
-        { label: '信息收发总频率', kind: 'freq', get: (d) => d.freq.msg_total, detail: { key: 'msg_total' } },
-        { label: '接口上行次数', kind: 'num', get: (d) => c(d).api_up, detail: { key: 'api_up' } },
-        { label: '接口下行次数', kind: 'num', get: (d) => c(d).api_down, detail: { key: 'api_down' } },
-        { label: '接口上下行总次数', kind: 'num', get: (d) => (c(d).api_up || 0) + (c(d).api_down || 0), detail: { key: 'api_total' } },
+        { labelKey: 'stats.msg_receive_n', kind: 'num', get: (d) => c(d).msg_receive, detail: { key: 'msg_receive' } },
+        { labelKey: 'stats.msg_send_n', kind: 'num', get: (d) => c(d).msg_send, detail: { key: 'msg_send' } },
+        { labelKey: 'stats.msg_total_n', kind: 'num', get: (d) => (c(d).msg_receive || 0) + (c(d).msg_send || 0), detail: { key: 'msg_total' } },
+        { labelKey: 'stats.msg_receive_f', kind: 'freq', get: (d) => d.freq.msg_receive, detail: { key: 'msg_receive' } },
+        { labelKey: 'stats.msg_send_f', kind: 'freq', get: (d) => d.freq.msg_send, detail: { key: 'msg_send' } },
+        { labelKey: 'stats.msg_total_f', kind: 'freq', get: (d) => d.freq.msg_total, detail: { key: 'msg_total' } },
+        { labelKey: 'stats.api_up_n', kind: 'num', get: (d) => c(d).api_up, detail: { key: 'api_up' } },
+        { labelKey: 'stats.api_down_n', kind: 'num', get: (d) => c(d).api_down, detail: { key: 'api_down' } },
+        { labelKey: 'stats.api_total_n', kind: 'num', get: (d) => (c(d).api_up || 0) + (c(d).api_down || 0), detail: { key: 'api_total' } },
       ],
     },
     {
-      title: '指令', desc: '指令触发 = 被核心内置功能或插件成功处理的消息事件',
+      titleKey: 'stats.secCmd', descKey: 'stats.secCmdDesc',
       tiles: [
-        { label: '指令触发次数', kind: 'num', get: (d) => c(d).cmd_trigger, detail: { key: 'cmd_trigger' } },
-        { label: '指令触发频率', kind: 'freq', get: (d) => d.freq.cmd_trigger, detail: { key: 'cmd_trigger' } },
-        { label: '最常触发指令（不计插件）', kind: 'top', get: (d) => d.top.cmd_all, detail: { key: 'cmd_all', defaultUnit: 'month' } },
-        { label: '最常触发指令（按插件分类）', kind: 'top', get: (d) => d.top.cmd_plugin, detail: { key: 'cmd_plugin', defaultUnit: 'month' } },
+        { labelKey: 'stats.cmd_trigger_n', kind: 'num', get: (d) => c(d).cmd_trigger, detail: { key: 'cmd_trigger' } },
+        { labelKey: 'stats.cmd_trigger_f', kind: 'freq', get: (d) => d.freq.cmd_trigger, detail: { key: 'cmd_trigger' } },
+        { labelKey: 'stats.cmd_all_top', kind: 'top', get: (d) => d.top.cmd_all, detail: { key: 'cmd_all', defaultUnit: 'month' } },
+        { labelKey: 'stats.cmd_plugin_top', kind: 'top', get: (d) => d.top.cmd_plugin, detail: { key: 'cmd_plugin', defaultUnit: 'month' } },
       ],
     },
     {
-      title: '场景', desc: '群聊场景来自 get_group_list 轮询（计入接口下行）与消息事件；私聊场景自统计上线累计',
+      titleKey: 'stats.secScene', descKey: 'stats.secSceneDesc',
       tiles: [
-        { label: '已添加场景数', kind: 'num', get: (d) => (d.scenes ? d.scenes.total : null), detail: { key: 'scene_new' } },
-        { label: '群聊场景数', kind: 'num', get: (d) => (d.scenes ? d.scenes.group : null), detail: { key: 'scene_new', kind: 'group' } },
-        { label: '私聊场景数', kind: 'num', get: (d) => (d.scenes ? d.scenes.private : null), detail: { key: 'scene_new', kind: 'private' } },
-        { label: '已启用插件场景数', kind: 'num', get: (d) => (d.scenesEnabled ? d.scenesEnabled.total : null) },
-        { label: '已启用插件群聊场景数', kind: 'num', get: (d) => (d.scenesEnabled ? d.scenesEnabled.group : null) },
-        { label: '已启用插件私聊场景数', kind: 'num', get: (d) => (d.scenesEnabled ? d.scenesEnabled.private : null) },
+        { labelKey: 'stats.scene_total', kind: 'num', get: (d) => (d.scenes ? d.scenes.total : null), detail: { key: 'scene_new' } },
+        { labelKey: 'stats.scene_group', kind: 'num', get: (d) => (d.scenes ? d.scenes.group : null), detail: { key: 'scene_new', kind: 'group' } },
+        { labelKey: 'stats.scene_private', kind: 'num', get: (d) => (d.scenes ? d.scenes.private : null), detail: { key: 'scene_new', kind: 'private' } },
+        { labelKey: 'stats.scene_enabled_total', kind: 'num', get: (d) => (d.scenesEnabled ? d.scenesEnabled.total : null) },
+        { labelKey: 'stats.scene_enabled_group', kind: 'num', get: (d) => (d.scenesEnabled ? d.scenesEnabled.group : null) },
+        { labelKey: 'stats.scene_enabled_private', kind: 'num', get: (d) => (d.scenesEnabled ? d.scenesEnabled.private : null) },
       ],
     },
   ];
 
-  const UNITS = [['year', '年'], ['month', '月'], ['day', '日'], ['hour', '小时']];
-  const UNIT_WINDOW = { hour: '最近 24 小时', day: '最近 30 天', month: '最近 12 个月', year: '全部' };
+  const UNITS = [['year', 'stats.unitYear'], ['month', 'stats.unitMonth'], ['day', 'stats.unitDay'], ['hour', 'stats.unitHour']];
+  const UNIT_WINDOW = { hour: 'stats.windowHour', day: 'stats.windowDay', month: 'stats.windowMonth', year: 'stats.windowYear' };
 
   // ==== 分区渲染 ====
-  const num = (v) => (v == null ? '—' : Number(v).toLocaleString('zh-CN'));
+  const num = (v) => (v == null ? '—' : Number(v).toLocaleString(locale()));
 
   function renderSections(data) {
     if (!data || !data.available) {
-      sectionsEl.innerHTML = '<div class="empty-hint">暂无统计数据（机器人尚未运行或尚未产生统计）</div>';
+      sectionsEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('common.statsUnavailable'))}</div>`;
       return;
     }
     sectionsEl.innerHTML = SECTIONS.map((sec) => `
       <section class="stats-section">
         <div class="stats-section-head">
-          <h3>${escapeHtml(sec.title)}</h3>
-          <span class="fmeta">${escapeHtml(sec.desc)}</span>
+          <h3>${escapeHtml(t(sec.titleKey))}</h3>
+          <span class="fmeta">${escapeHtml(t(sec.descKey))}</span>
         </div>
         <div class="stat-grid">
-          ${sec.tiles.map((t) => renderTile(t, data)).join('')}
+          ${sec.tiles.map((tile) => renderTile(tile, data)).join('')}
         </div>
       </section>`).join('');
     sectionsEl.querySelectorAll('.stat-tile[data-detail]').forEach((el) => {
       el.addEventListener('click', () => {
-        const t = JSON.parse(el.getAttribute('data-detail'));
-        openDetail(t.title, t.detail);
+        const tinfo = JSON.parse(el.getAttribute('data-detail'));
+        openDetail(tinfo.title, tinfo.detail);
       });
     });
   }
 
-  function renderTile(t, data) {
-    const val = t.get(data);
+  function renderTile(tile, data) {
+    const val = tile.get(data);
     let body;
-    if (t.kind === 'top') {
+    if (tile.kind === 'top') {
       const rows = val || [];
       body = rows.length
         ? `<div class="stat-top">${rows.map((r, i) => `<div class="stat-top-row"><span class="rank-i">${i + 1}.</span><span class="rank-name">${escapeHtml(r.name)}</span><span class="rank-n">×${num(r.n)}</span></div>`).join('')}</div>`
         : '<div class="stat-num">—</div>';
-    } else if (t.kind === 'freq') {
-      body = `<div class="stat-num">${num(val)}</div><div class="stat-unit">条/day</div>`;
+    } else if (tile.kind === 'freq') {
+      body = `<div class="stat-num">${num(val)}</div><div class="stat-unit">${escapeHtml(t('stats.perDay'))}</div>`;
     } else {
       body = `<div class="stat-num">${num(val)}</div>`;
     }
-    const clickable = t.detail ? ` data-detail="${escapeHtml(JSON.stringify({ title: t.label, detail: t.detail }))}"` : '';
-    return `<div class="stat-tile${t.detail ? ' clickable' : ''}"${clickable}>
+    const clickable = tile.detail ? ` data-detail="${escapeHtml(JSON.stringify({ title: t(tile.labelKey), detail: tile.detail }))}"` : '';
+    return `<div class="stat-tile${tile.detail ? ' clickable' : ''}"${clickable}>
       ${body}
-      <div class="stat-label">${escapeHtml(t.label)}</div>
+      <div class="stat-label">${escapeHtml(t(tile.labelKey))}</div>
     </div>`;
   }
 
@@ -107,23 +108,23 @@
           <h3>${escapeHtml(title)}</h3>
           <span class="fmeta" id="d-window"></span>
           <span class="spacer"></span>
-          <button class="btn small" data-act="close">关闭</button>
+          <button class="btn small" data-act="close">${escapeHtml(t('common.close'))}</button>
         </div>
         <div class="detail-controls">
           <span class="seg-group" id="d-units">
-            ${UNITS.map(([u, label]) => `<button class="btn small seg-btn" data-unit="${u}">${label}</button>`).join('')}
+            ${UNITS.map(([u, key]) => `<button class="btn small seg-btn" data-unit="${u}">${escapeHtml(t(key))}</button>`).join('')}
           </span>
           ${isScene ? `<span class="seg-group" id="d-kinds">
-            <button class="btn small seg-btn" data-kind="">全部</button>
-            <button class="btn small seg-btn" data-kind="group">群聊</button>
-            <button class="btn small seg-btn" data-kind="private">私聊</button>
+            <button class="btn small seg-btn" data-kind="">${escapeHtml(t('stats.all'))}</button>
+            <button class="btn small seg-btn" data-kind="group">${escapeHtml(t('stats.group'))}</button>
+            <button class="btn small seg-btn" data-kind="private">${escapeHtml(t('stats.private'))}</button>
           </span>` : ''}
           ${isRank ? '' : `<span class="seg-group" id="d-modes">
-            <button class="btn small seg-btn" data-mode="chart">折线图</button>
-            <button class="btn small seg-btn" data-mode="text">文本</button>
+            <button class="btn small seg-btn" data-mode="chart">${escapeHtml(t('stats.chart'))}</button>
+            <button class="btn small seg-btn" data-mode="text">${escapeHtml(t('stats.text'))}</button>
           </span>`}
         </div>
-        <div class="detail-body" id="d-body"><div class="empty-hint">加载中…</div></div>
+        <div class="detail-body" id="d-body"><div class="empty-hint">${escapeHtml(t('common.loading'))}</div></div>
       </div>`);
     let unit = opts.defaultUnit || (isRank ? 'month' : 'day');
     let mode = isRank ? 'text' : 'chart';
@@ -142,8 +143,8 @@
     };
     const load = async () => {
       markUnits(); markKinds(); markModes();
-      winEl.textContent = '范围：' + UNIT_WINDOW[unit];
-      bodyEl.innerHTML = '<div class="empty-hint">加载中…</div>';
+      winEl.textContent = t('stats.range', { w: t(UNIT_WINDOW[unit]) });
+      bodyEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('common.loading'))}</div>`;
       let url = `/api/stats/detail?key=${encodeURIComponent(opts.key)}&unit=${encodeURIComponent(unit)}`;
       if (isScene && kind) url += '&kind=' + encodeURIComponent(kind);
       try {
@@ -151,7 +152,7 @@
         if (r.kindType === 'rank') renderRank(bodyEl, r);
         else renderCount(bodyEl, mode, r);
       } catch (err) {
-        bodyEl.innerHTML = `<div class="empty-hint">加载失败：${escapeHtml(err.message)}</div>`;
+        bodyEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('stats.loadFail', { e: err.message }))}</div>`;
       }
     };
 
@@ -184,17 +185,17 @@
   // ==== 详情渲染 ====
   function renderCount(bodyEl, mode, r) {
     if (r.buckets.length === 0) {
-      bodyEl.innerHTML = '<div class="empty-hint">该时间段内暂无数据</div>';
+      bodyEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('stats.noData'))}</div>`;
       return;
     }
     if (r.total === 0) {
-      bodyEl.innerHTML = '<div class="empty-hint">该时间段内计数为 0（尚无数据）</div>';
+      bodyEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('stats.zeroCount'))}</div>`;
       return;
     }
     if (mode === 'text') {
-      bodyEl.innerHTML = `<table class="data detail-table"><thead><tr><th>时间</th><th>次数</th></tr></thead><tbody>
+      bodyEl.innerHTML = `<table class="data detail-table"><thead><tr><th>${escapeHtml(t('stats.thTime'))}</th><th>${escapeHtml(t('stats.thCount'))}</th></tr></thead><tbody>
         ${r.buckets.map((b) => `<tr><td>${escapeHtml(b.t)}</td><td>${num(b.n)}</td></tr>`).join('')}
-        <tr class="total-row"><td>合计</td><td>${num(r.total)}</td></tr></tbody></table>`;
+        <tr class="total-row"><td>${escapeHtml(t('stats.total'))}</td><td>${num(r.total)}</td></tr></tbody></table>`;
       return;
     }
     bodyEl.innerHTML = '<div class="detail-chart"></div>';
@@ -203,10 +204,10 @@
 
   function renderRank(bodyEl, r) {
     if (!r.rows.length) {
-      bodyEl.innerHTML = '<div class="empty-hint">该时间段内暂无指令记录</div>';
+      bodyEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('stats.noCmd'))}</div>`;
       return;
     }
-    bodyEl.innerHTML = `<table class="data detail-table"><thead><tr><th style="width:40px">#</th><th>${r.key === 'cmd_plugin' ? '插件（分类）' : '指令名'}</th><th>触发次数</th><th>占比</th>${r.key === 'cmd_plugin' ? '<th>最常触发指令</th>' : ''}</tr></thead><tbody>
+    bodyEl.innerHTML = `<table class="data detail-table"><thead><tr><th style="width:40px">#</th><th>${r.key === 'cmd_plugin' ? escapeHtml(t('stats.thPlugin')) : escapeHtml(t('stats.thCmd'))}</th><th>${escapeHtml(t('stats.thTriggers'))}</th><th>${escapeHtml(t('stats.thShare'))}</th>${r.key === 'cmd_plugin' ? `<th>${escapeHtml(t('stats.thTopCmd'))}</th>` : ''}</tr></thead><tbody>
       ${r.rows.map((row, i) => `<tr>
         <td>${i + 1}</td>
         <td class="cell">${escapeHtml(row.name)}</td>
@@ -228,10 +229,16 @@
     return nf * Math.pow(10, exp);
   }
 
+  // 轴刻度数字：中文用 亿/万 缩略，其他语言用小缩写（1.2M / 850K）
   function fmtAxisNum(v) {
-    if (v >= 1e8) return (v / 1e8).toFixed(v % 1e8 === 0 ? 0 : 1) + '亿';
-    if (v >= 1e4) return (v / 1e4).toFixed(v % 1e4 === 0 ? 0 : 1) + '万';
-    return v.toLocaleString('zh-CN');
+    if (locale().startsWith('zh')) {
+      const yi = locale() === 'zh-TW' ? '億' : '亿';
+      const wan = locale() === 'zh-TW' ? '萬' : '万';
+      if (v >= 1e8) return (v / 1e8).toFixed(v % 1e8 === 0 ? 0 : 1) + yi;
+      if (v >= 1e4) return (v / 1e4).toFixed(v % 1e4 === 0 ? 0 : 1) + wan;
+    }
+    if (v >= 1e6) return new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+    return v.toLocaleString(locale());
   }
 
   function drawLineChart(container, buckets) {
@@ -299,7 +306,7 @@
       const ty = Math.max(padT, cy - 24);
       tip.setAttribute('x', tx); tip.setAttribute('y', ty);
       tip.setAttribute('visibility', 'visible');
-      const lines = [`${buckets[i].t}`, `次数：${num(buckets[i].n)}`];
+      const lines = [`${buckets[i].t}`, t('stats.chartTip', { n: num(buckets[i].n) })];
       tip.innerHTML = lines.map((l, k) => `<tspan x="${tx}" dy="${k === 0 ? 0 : 14}">${escapeHtml(l)}</tspan>`).join('');
     });
     hit.addEventListener('mouseleave', () => {
@@ -315,8 +322,8 @@
     const data = await api('/api/stats').catch(() => null);
     renderSections(data);
     if (timeEl) timeEl.textContent = data && data.available
-      ? '最后更新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false })
-      : '暂无统计数据';
+      ? t('index.lastUpdate', { t: new Date().toLocaleTimeString(locale(), { hour12: false }) })
+      : t('stats.none');
   }
   function schedule() {
     clearTimeout(timer);
@@ -329,6 +336,9 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) { clearTimeout(timer); loadStats().then(schedule); }
   });
+
+  // 语言切换时重渲染分区卡片
+  window.__i18nRerender.push(() => loadStats());
 
   loadStats().then(schedule);
 })();

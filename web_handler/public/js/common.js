@@ -1,13 +1,14 @@
 // 小生物v2 管理面板通用工具（fetch 封装 / toast / 弹窗 / 格式化 / 顶栏）
+// 依赖先加载的 i18n.js（t/locale）与 theme.js；动态文案一律用 t()，切换语言后由 __i18nRerender 回调重渲染
 'use strict';
 
-// API 请求封装：401 统一跳登录页；非 2xx 抛带中文 message 的 Error
+// API 请求封装：401 统一跳登录页；非 2xx 抛带本地化 message 的 Error
 async function api(path, opts = {}) {
   let res;
   try {
     res = await fetch(path, opts);
   } catch (e) {
-    toast('网络请求失败，请检查面板是否在运行', 'error');
+    toast(t('common.netErr'), 'error');
     throw e;
   }
   if (res.status === 401) {
@@ -66,14 +67,14 @@ function showModal(html) {
 }
 
 // 确认弹窗 → Promise<boolean>
-function confirmDlg(title, detail, okText = '确定') {
+function confirmDlg(title, detail, okText = t('common.ok')) {
   return new Promise((resolve) => {
     const { overlay, close } = showModal(`
       <div class="modal-box">
         <h3>${escapeHtml(title)}</h3>
         <div class="mdesc">${escapeHtml(detail)}</div>
         <div class="mactions">
-          <button class="btn" data-act="cancel">取消</button>
+          <button class="btn" data-act="cancel">${escapeHtml(t('common.cancel'))}</button>
           <button class="btn danger" data-act="ok">${escapeHtml(okText)}</button>
         </div>
       </div>`);
@@ -94,8 +95,8 @@ function promptDlg(title, label, initial = '') {
           </label>
         </div>
         <div class="mactions">
-          <button class="btn" data-act="cancel">取消</button>
-          <button class="btn primary" data-act="ok">确定</button>
+          <button class="btn" data-act="cancel">${escapeHtml(t('common.cancel'))}</button>
+          <button class="btn primary" data-act="ok">${escapeHtml(t('common.ok'))}</button>
         </div>
       </div>`);
     const input = overlay.querySelector('#pd-input');
@@ -103,7 +104,7 @@ function promptDlg(title, label, initial = '') {
     input.select();
     const ok = () => {
       const v = input.value.trim();
-      if (v === '') { toast('输入不能为空', 'error'); return; }
+      if (v === '') { toast(t('common.inputRequired'), 'error'); return; }
       close();
       resolve(v);
     };
@@ -157,62 +158,92 @@ function fmtTime(ms) {
 
 // —— 数据统计（主页精简版：仅总次数卡片）——
 const HOME_STAT_DEFS = [
-  { label: '信息接收总次数', desc: '收到的 QQ 消息事件（群聊/私聊）', get: (d) => d.counters.msg_receive },
-  { label: '信息发送总次数', desc: '调用发送消息 API 的次数', get: (d) => d.counters.msg_send },
-  { label: '接口上行总次数', desc: '从 OneBot 收到的全部事件（不含心跳）', get: (d) => d.counters.api_up },
-  { label: '接口下行总次数', desc: '调用 OneBot API 的总次数', get: (d) => d.counters.api_down },
-  { label: '指令触发总次数', desc: '被核心/插件成功处理的消息事件', get: (d) => d.counters.cmd_trigger },
-  { label: '已添加场景数', desc: '群聊（get_group_list 轮询 + 消息补充）+ 私聊（自统计上线累计）', get: (d) => (d.scenes ? d.scenes.total : null) },
-  { label: '已启用插件场景数', desc: 'permissions.db 中启用 ≥1 个插件的场景（群聊 + 私聊）', get: (d) => (d.scenesEnabled ? d.scenesEnabled.total : null) },
+  { label: 'stats.msg_receive_n', desc: 'stats.dMsgReceive', get: (d) => d.counters.msg_receive },
+  { label: 'stats.msg_send_n', desc: 'stats.dMsgSend', get: (d) => d.counters.msg_send },
+  { label: 'stats.api_up_n', desc: 'stats.dApiUp', get: (d) => d.counters.api_up },
+  { label: 'stats.api_down_n', desc: 'stats.dApiDown', get: (d) => d.counters.api_down },
+  { label: 'stats.cmd_trigger_n', desc: 'stats.dCmdTrigger', get: (d) => d.counters.cmd_trigger },
+  { label: 'stats.scene_total', desc: 'stats.dScene', get: (d) => (d.scenes ? d.scenes.total : null) },
+  { label: 'stats.scene_enabled_total', desc: 'stats.dSceneEnabled', get: (d) => (d.scenesEnabled ? d.scenesEnabled.total : null) },
 ];
 
 // 首页渲染：/api/stats 数据 → 7 张总次数卡片（缺失显示 —）
 function renderStats(containerEl, data) {
   if (!containerEl) return;
   if (!data || !data.available) {
-    containerEl.innerHTML = '<div class="empty-hint">暂无统计数据（机器人尚未运行或尚未产生统计）</div>';
+    containerEl.innerHTML = `<div class="empty-hint">${escapeHtml(t('common.statsUnavailable'))}</div>`;
     return;
   }
-  const num = (v) => (v == null ? '—' : Number(v).toLocaleString('zh-CN'));
+  const num = (v) => (v == null ? '—' : Number(v).toLocaleString(locale()));
   containerEl.innerHTML = HOME_STAT_DEFS.map((d) => `
-    <div class="stat-tile" title="${escapeHtml(d.desc)}">
+    <div class="stat-tile" title="${escapeHtml(t(d.desc))}">
       <div class="stat-num">${num(d.get(data))}</div>
-      <div class="stat-label">${escapeHtml(d.label)}</div>
+      <div class="stat-label">${escapeHtml(t(d.label))}</div>
     </div>`).join('');
 }
 
 // —— 顶栏（主页/项目架构/数据库管理共用）——
+const topStatus = { username: null, onebot: null };
+
+// 从缓存状态重绘用户与 OneBot 徽标（语言切换时也走这里）
+function renderTopbarStatus() {
+  document.querySelectorAll('.top-user').forEach((el) => {
+    el.textContent = topStatus.username ? '👤 ' + topStatus.username : '';
+  });
+  const st = topStatus.onebot;
+  document.querySelectorAll('.onebot-badge').forEach((badge) => {
+    if (!st) {
+      badge.className = 'badge onebot-badge';
+      badge.textContent = t('onebot.checking');
+      return;
+    }
+    if (st.online) {
+      badge.className = 'badge onebot-badge on';
+      badge.textContent = t('onebot.online', { id: st.userId != null ? st.userId : '', nick: st.nickname ? ' · ' + st.nickname : '' });
+      badge.title = t('onebot.uriTitle') + st.uri;
+    } else {
+      badge.className = 'badge onebot-badge off';
+      badge.textContent = t('onebot.offline');
+      badge.title = t('onebot.uriTitle') + st.uri + '\n' + t('onebot.offlineTitle');
+    }
+  });
+}
+
+// 汉堡菜单（移动端）与退出登录绑定
+function initTopbarUi() {
+  const burger = document.getElementById('nav-burger');
+  const topbar = document.querySelector('.topbar');
+  if (burger && topbar) {
+    burger.addEventListener('click', () => topbar.classList.toggle('open'));
+    topbar.querySelectorAll('.mob-panel a').forEach((a) => {
+      a.addEventListener('click', () => topbar.classList.remove('open'));
+    });
+  }
+  const btn = document.getElementById('btn-logout');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      try { await api('/api/logout', { method: 'POST' }); } catch { /* 忽略 */ }
+      location.href = '/login.html';
+    });
+  }
+}
+
 async function loadTopbar(active) {
+  initTopbarUi();
   document.querySelectorAll('.topbar nav a').forEach((a) => {
     if (a.getAttribute('href') === '/' + active) a.classList.add('active');
   });
   // 当前用户
   try {
     const s = await api('/api/session');
-    const el = document.getElementById('top-user');
-    if (el) el.textContent = '👤 ' + s.username;
+    topStatus.username = s.username;
+    renderTopbarStatus();
   } catch { /* 401 已跳登录 */ }
   // OneBot 状态徽标
   try {
     const st = await api('/api/onebot/status');
-    const badge = document.getElementById('onebot-badge');
-    if (!badge) return;
-    if (st.online) {
-      badge.className = 'badge on';
-      badge.textContent = `OneBot 在线 · QQ ${st.userId}${st.nickname ? ' · ' + st.nickname : ''}`;
-      badge.title = '连接地址：' + st.uri;
-    } else {
-      badge.className = 'badge off';
-      badge.textContent = 'OneBot 离线';
-      badge.title = '连接地址：' + st.uri + '\n离线时登录仅做静态机器人账号比对';
-    }
+    topStatus.onebot = st;
+    renderTopbarStatus();
   } catch { /* 忽略 */ }
-  // 退出登录
-  const btn = document.getElementById('btn-logout');
-  if (btn) {
-    btn.onclick = async () => {
-      try { await api('/api/logout', { method: 'POST' }); } catch { /* 忽略 */ }
-      location.href = '/login.html';
-    };
-  }
 }
+window.__i18nRerender.push(renderTopbarStatus);
