@@ -12,4 +12,17 @@
       ? `在线${st.userId ? '（QQ ' + st.userId + '，双重核对生效）' : '（双重核对生效）'}`
       : '离线（登录仅静态比对）';
   }
+
+  // —— 数据统计（每 10 秒刷新）——
+  const statsEl = document.getElementById('home-stats');
+  const timeEl = document.getElementById('stat-time');
+  async function loadStats() {
+    const data = await api('/api/stats').catch(() => null);
+    renderStats(statsEl, data);
+    if (timeEl) timeEl.textContent = data && data.available
+      ? '最后更新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false })
+      : '';
+  }
+  loadStats();
+  setInterval(loadStats, 10000);
 })();

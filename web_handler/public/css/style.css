@@ -213,6 +213,21 @@ mark.hl { background: rgba(210, 153, 34, .4); color: #ffe9b3; border-radius: 3px
 .modal-box input[type="text"], .modal-box input[type="password"] { width: 100%; }
 .modal-box .mactions { display: flex; justify-content: flex-end; gap: 10px; }
 
+/* ===== 数据统计 ===== */
+.stat-section { margin-top: 26px; }
+.stat-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.stat-head h3 { font-size: 16px; font-weight: 600; }
+.stat-head .spacer { flex: 1; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.stat-grid .empty-hint { grid-column: 1 / -1; }
+.stat-tile {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 16px; text-align: center; transition: border-color .15s, transform .15s;
+}
+.stat-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+.stat-num { font-size: 26px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
 /* ===== 数据库页 ===== */
 .db-layout { display: flex; gap: 16px; padding: 18px 20px; max-width: 1500px; margin: 0 auto; height: calc(100vh - 52px); }
 .db-side {

@@ -99,6 +99,22 @@ python migrate_old_data.py --old <v1的data目录> [--dest <v2根目录>] [--dry
 
 插件/核心代码内不含迁移逻辑。关键转换：插件名映射、MC place_id 补下划线、image_share 按文件重算 md5、tsugu 配置键过滤与路径重映射、score cards 拆表等。
 
+## 数据统计
+
+机器人运行时会自动采集 7 项计数并写入 `data/db/stats.db`（可在面板"数据库管理"中查看/编辑），网页管理面板主页与"数据统计"页（`/stats.html`）实时展示：
+
+| 指标 | 口径 |
+|---|---|
+| 信息接收次数 | 收到的 QQ 消息事件（群聊/私聊，post_type=message） |
+| 信息发送次数 | 调用发送消息 API 的次数（send_private_msg / send_group_msg / 转发消息） |
+| 信息接收发送总次数 | 前两者之和（面板计算） |
+| 接口上行次数 | 从 OneBot 收到的全部事件（消息/通知/请求/元事件，不含心跳） |
+| 接口下行次数 | 调用 OneBot API 的总次数（含查资料、踢人等所有 action） |
+| 接口上下行总次数 | 前两者之和（面板计算） |
+| 指令触发次数 | 被核心内置功能或插件成功处理的消息事件数 |
+
+计数在 `src/core/stats.py` 中采集（`main.py` 入口钩子 + `handle_message.py` 指令钩子），仅统计机器人运行期间产生的流量；重启不清零（持久化于 SQLite）。
+
 ## 网页管理面板（web_handler）
 
 独立 Node.js 程序（零 npm 依赖，Node 22+），提供项目文件浏览/在线编辑与 11 个数据库的表管理。登录需管理员账号+密码+机器人 QQ（`web_handler/config.yaml` 的 `botQq`，**当前为 0 未配置，填入机器人真实 QQ 后重启面板才能登录**）。
@@ -116,7 +132,7 @@ python migrate_old_data.py --old <v1的data目录> [--dest <v2根目录>] [--dry
 ├── migrate_old_data.py   # v1 → v2 数据迁移脚本
 ├── src/
 │   ├── core/             # 核心内置：功能管理/管理员指令(core_function.py)、
-│   │                     #   请求处理/白名单(request_center.py)、help.txt、admin_help.txt
+│   │                     #   请求处理/白名单(request_center.py)、数据统计(stats.py)、help.txt、admin_help.txt
 │   ├── plugins/          # 13 个插件 + 样本插件（各为独立子项目）
 │   ├── db_handler/       # PluginDB 等数据库工具
 │   ├── handle_message.py # 消息分发（启用检查 + 调用各插件）

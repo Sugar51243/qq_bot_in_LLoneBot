@@ -6,6 +6,7 @@ from src.Information_interpreter.message_interpreter import interpret_message
 from src.config_reader.config_reader import read_bot_config, read_plugin_config
 import src.core.core_function as core_function
 from src.core.register import get_plugin_location, list_plugins, sreach_enabled_plugin
+from src.core import stats as stats_module
 from OneBotConnecter.loger.log_info import error, log
 from datetime import datetime
 
@@ -51,14 +52,20 @@ def handle_message(bot, message):
     log(f"permissions of [{message.scene_id}]: {permissions}")
     # active plugins
     for plugin_name in plugins:
+        log(f"loading {plugin_name} for [{message.scene_id}]")
         file = get_plugin_location(plugin_folder=plugin_name)
         plugin_config = read_plugin_config(file)
         plugin_id = plugin_config.get("plugin_id")
         if not plugin_id:
             log(f"{plugin_name} 未定义plugin_id")
             continue
-        if plugin_id not in permissions: continue
+        if plugin_id not in permissions:
+            log(f"{plugin_name} not enabled on [{message.scene_id}]")
+            continue
         order_handled = active_plugin(plugin_name, bot, message) or order_handled
     end_time = datetime.now()
     current_time = end_time-start_time
     log(f"Handle message for [{message.scene_id}] in {current_time}")
+    # 统计：消息事件被核心/插件成功处理即计一次指令触发（通知/请求类事件不计）
+    if order_handled and message.raw_data.get("post_type") == "message":
+        stats_module.record_command()

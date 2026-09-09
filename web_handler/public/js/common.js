@@ -155,6 +155,32 @@ function fmtTime(ms) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// —— 数据统计（主页与统计页共用）——
+// 7 项指标：5 项原始计数（机器人写入 data/db/stats.db）+ 2 项由前端相加
+const STAT_DEFS = [
+  { key: 'msg_receive', label: '信息接收次数', desc: '收到的 QQ 消息事件（群聊/私聊）' },
+  { key: 'msg_send', label: '信息发送次数', desc: '调用发送消息 API 的次数' },
+  { key: 'msg_total', label: '信息接收发送总次数', desc: '接收 + 发送', calc: (c) => (c.msg_receive || 0) + (c.msg_send || 0) },
+  { key: 'api_up', label: '接口上行次数', desc: '从 OneBot 收到的全部事件（消息/通知/请求/元事件，不含心跳）' },
+  { key: 'api_down', label: '接口下行次数', desc: '调用 OneBot API 的总次数（含查资料、踢人等）' },
+  { key: 'api_total', label: '接口上下行总次数', desc: '上行 + 下行', calc: (c) => (c.api_up || 0) + (c.api_down || 0) },
+  { key: 'cmd_trigger', label: '指令触发次数', desc: '被核心内置功能或插件成功处理的消息事件' },
+];
+
+function renderStats(containerEl, data) {
+  if (!containerEl) return;
+  if (!data || !data.available) {
+    containerEl.innerHTML = '<div class="empty-hint">暂无统计数据（机器人尚未运行或尚未产生统计）</div>';
+    return;
+  }
+  const c = data.counters || {};
+  containerEl.innerHTML = STAT_DEFS.map((d) => `
+    <div class="stat-tile" title="${escapeHtml(d.desc)}">
+      <div class="stat-num">${(d.calc ? d.calc(c) : (c[d.key] || 0)).toLocaleString('zh-CN')}</div>
+      <div class="stat-label">${escapeHtml(d.label)}</div>
+    </div>`).join('');
+}
+
 // —— 顶栏（主页/项目架构/数据库管理共用）——
 async function loadTopbar(active) {
   document.querySelectorAll('.topbar nav a').forEach((a) => {

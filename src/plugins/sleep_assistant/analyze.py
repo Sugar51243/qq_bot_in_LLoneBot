@@ -7,7 +7,6 @@ import datetime
 from OneBotConnecter.types import MessageChain
 from OneBotConnecter.loger.log_info import log
 from src.plugins.sleep_assistant.db import return_sleep_data
-from src.tools.reply_message import feedback
 
 def good_morning(bot, message, user_id, user_data):
     #
@@ -59,19 +58,19 @@ def good_morning(bot, message, user_id, user_data):
         wake_up_duration = 24 - sleep_duration
         send_message.add(f"\n昨日总清醒时长: {int(wake_up_duration)}:{int((wake_up_duration % 1) * 60):02d}")
     # 发送早安消息
-    feedback(message, send_message)
+    bot.send_msg(user_id=message.raw_data.get("user_id"), message=send_message, group_id=message.raw_data.get("group_id", None))
     # 额外追加
     # 根据当前时间和睡眠时长来生成个性化的消息
     now_time = timestamp_to_hour(wake_up_time)
     log(f"当前时间为{now_time:.1f}点，睡眠时长为{sleep_duration:.1f}小时")
     if now_time <= 6: # 如果当前时间在凌晨6点之前，发送早安消息
-        feedback(message, MessageChain(["早！今天好早啊！今天是有事要做吗？"]))
+        bot.send_msg(user_id=message.raw_data.get("user_id"), message=MessageChain(["早！今天好早啊！今天是有事要做吗？"]), group_id=message.raw_data.get("group_id", None))
     elif now_time <= 9: # 如果当前时间在早上9点之前
-        feedback(message, MessageChain(["早安！"]))
+        bot.send_msg(user_id=message.raw_data.get("user_id"), message=MessageChain(["早安！"]), group_id=message.raw_data.get("group_id", None))
     elif now_time <= 14 or 11 > sleep_duration > 9 or (avg_sleep_duration and sleep_duration > avg_sleep_duration + 2): # 如果当前时间在下午4点之前，或者睡眠时间超过9小时，或者睡眠时间比平均睡眠时间长了2小时以上，发送消息
-        feedback(message, MessageChain(["🐖!"]))
+        bot.send_msg(user_id=message.raw_data.get("user_id"), message=MessageChain(["🐖!"]), group_id=message.raw_data.get("group_id", None))
     elif now_time <= 16: # 如果当前时间在下午4点之前，发送消息
-        feedback(message, MessageChain(["🐖!晚上还要不要继续睡了？"]))
+        bot.send_msg(user_id=message.raw_data.get("user_id"), message=MessageChain(["🐖!晚上还要不要继续睡了？"]), group_id=message.raw_data.get("group_id", None))
 
 def piece_sleep_info(bot, message, user_id, user_data, now_time):
     sleep_datas = return_sleep_data(user_id)
@@ -84,7 +83,7 @@ def piece_sleep_info(bot, message, user_id, user_data, now_time):
         send_message.add("\n小睡怎么能睡超过3小时呢？🐖吗?")
     else:
         send_message.add("\n睡了个好觉吗？")
-    feedback(message, send_message)
+    bot.send_msg(user_id=message.raw_data.get("user_id"), message=send_message, group_id=message.raw_data.get("group_id", None))
 
 # == 时间工具 ==
 

@@ -91,7 +91,9 @@ def _handle(bot, message) -> bool:
         old_message_isSleep, old_message_isWakeUp = get_time_periods(sleep_data, last_message_time)
         new_message_isSleep, new_message_isWakeUp = get_time_periods(sleep_data, time)
         if user_data[3]: old_message_isSleep = True
-        if raw_message in ["早", "早安", "早上好"]: new_message_isWakeUp = True
+        #仅"早安"等文字指令才计入指令触发，普通消息只用于睡眠记录分析
+        is_command = raw_message in ["早", "早安", "早上好"]
+        if is_command: new_message_isWakeUp = True
         log(f"当前时间为{datetime.datetime.fromtimestamp(now_time).strftime('%Y-%m-%d %H:%M:%S')}点")
         log(f"用户{user_id}的上条消息的睡觉时间段为：{old_message_isSleep}，起床时间段为：{old_message_isWakeUp}")
         log(f"用户{user_id}的新消息的睡觉时间段为：{new_message_isSleep}，起床时间段为：{new_message_isWakeUp}")
@@ -104,7 +106,7 @@ def _handle(bot, message) -> bool:
         #如果新消息的时间戳比上次消息的时间戳大超过24小时，说明用户很久没有发消息了，更新最后消息时间并返回
         if user_data[3]: non_good_night(user_id)
         if sleep_duration >= 24:
-            feedback(message, MessageChain(["昨天没发过信息呢？是很忙吗？"]))
+            bot.send_msg(user_id=user_id, message=MessageChain(["昨天没发过信息呢？是很忙吗？"]), group_id=message.raw_data.get("group_id", None))
             log(f"用户{user_id}距离上次消息的时间超过24小时，更新最后消息时间并返回")
         #
         elif old_message_isSleep and new_message_isWakeUp and sleep_duration > 4:
@@ -113,7 +115,7 @@ def _handle(bot, message) -> bool:
             good_morning(bot, message, user_id, user_data)
         #
         elif old_message_isSleep and new_message_isWakeUp and not new_message_isSleep and sleep_duration < 2 and not user_data[3]:
-            feedback(message, MessageChain(["怎么熬夜了？"]))
+            bot.send_msg(user_id=message.raw_data.get("user_id"), message=MessageChain(["怎么熬夜了？"]), group_id=message.raw_data.get("group_id", None))
         #
         else:
             if user_data[3]:
@@ -123,8 +125,9 @@ def _handle(bot, message) -> bool:
                     piece_sleep_info(bot, message, user_id, user_data, now_time)
                 else:
                     log(f"用户{user_id}距离上次消息的时间不到1小时，假设用户还没有睡，发送提醒消息")
-                    feedback(message, MessageChain(["时间不足，已取消晚安记录"]))
-        return True
+                    send_message = MessageChain(["时间不足，已取消晚安记录"])
+                    bot.send_msg(user_id=user_id, message=send_message, group_id=message.raw_data.get("group_id", None))
+        return is_command
     except Exception as e:
         tb = e.__traceback__
         formatted_tb = ''.join(traceback.format_tb(tb))

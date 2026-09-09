@@ -235,6 +235,23 @@ function createRouter(config) {
       } catch (e) { throw mapFsError(e); }
     }],
 
+    // ============ 数据统计 ============
+    ['GET', /^\/api\/stats$/, true, (req, res) => {
+      // 计数由机器人运行时写入 data/db/stats.db；库不存在/读取失败一律按无数据返回（不 404）
+      if (!dbmod.findDb('stats')) return sendJson(res, 200, { available: false, counters: {} });
+      try {
+        const db = dbmod.openDb('stats', { readOnly: true });
+        try {
+          const counters = {};
+          for (const r of db.prepare('SELECT key, value FROM counters').all()) counters[r.key] = Number(r.value);
+          sendJson(res, 200, { available: true, counters });
+        } finally { db.close(); }
+      } catch (e) {
+        console.log(`[小生物v2面板] 读取统计失败：${e.message}`);
+        sendJson(res, 200, { available: false, counters: {} });
+      }
+    }],
+
     // ============ 数据库管理 ============
     ['GET', /^\/api\/db\/list$/, true, (req, res) => {
       sendJson(res, 200, { dbs: dbmod.listDbs() });
@@ -338,7 +355,7 @@ function createRouter(config) {
           return;
         }
         // 无会话 → 落入静态服务正常展示登录页
-      } else if (pathname === '/index.html' || pathname === '/files.html' || pathname === '/db.html') {
+      } else if (pathname === '/index.html' || pathname === '/files.html' || pathname === '/db.html' || pathname === '/stats.html') {
         if (!requireAuth(req, res, config, false)) return;
       }
     }

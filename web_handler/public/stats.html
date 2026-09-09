@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>数据统计 · 小生物v2 管理面板</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🐾 小生物v2 管理面板<small>web_handler</small></div>
+    <nav>
+      <a href="/index.html">主页</a>
+      <a href="/files.html">项目架构</a>
+      <a href="/db.html">数据库管理</a>
+      <a href="/stats.html">数据统计</a>
+    </nav>
+    <div class="spacer"></div>
+    <span class="badge" id="onebot-badge">OneBot: 检测中…</span>
+    <span class="user" id="top-user"></span>
+    <button class="btn small" id="btn-logout">退出登录</button>
+  </header>
+
+  <main class="container">
+    <h2 class="page-title">数据统计</h2>
+    <p class="page-desc">
+      统计由机器人实时采集（写入 data/db/stats.db，可在"数据库管理"中查看）。
+      口径：<b>信息</b> = QQ 消息收发；<b>接口</b> = 与 OneBot 的全部协议流量（上行=收到的全部事件，不含心跳；下行=全部 API 调用）；<b>指令触发</b> = 被核心/插件成功处理的消息事件。每 10 秒自动刷新。
+    </p>
+
+    <div class="toolbar">
+      <span class="fmeta" id="stat-time"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn ghost" id="btn-refresh">🔄 刷新</button>
+    </div>
+
+    <div class="stat-grid" id="stats-grid"><div class="empty-hint">加载中…</div></div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/stats.js"></script>
+</body>
+</html>

@@ -71,14 +71,8 @@ def handle_decrease(bot, message):
     group_id = str(message.raw_data.get("group_id", ""))
     if not leave_enabled(group_id): return
     operator_id = str(message.raw_data.get("operator_id", ""))
-    msg = MessageChain([AtMessage(user_id)])
-    if user_id == operator_id:
-        msg.add(" 退出了")
-    else:
-        msg.add(" 被")
-        msg.add(AtMessage(operator_id))
-        msg.add(" 踢离了")
-    bot.send_group_msg(message.raw_data.get("group_id"), msg)
+    msg = f"{user_id}退出了" if user_id == operator_id else f"{user_id}被{operator_id}踢离了"
+    bot.send_group_msg(message.raw_data.get("group_id"), MessageChain([msg]))
 
 def handle_card(bot, message):
     group_id = str(message.raw_data.get("group_id", ""))
@@ -88,9 +82,8 @@ def handle_card(bot, message):
     if is_control_character_present(card_new): #bug name
         log(f"用户名称{str(card_new)}存在非法字符")
         return
-    msg = MessageChain([AtMessage(str(message.raw_data.get("user_id")))])
-    msg.add(f'''{f"({card_old})" if card_old else ""}更改群昵称为{card_new}''')
-    bot.send_group_msg(message.raw_data.get("group_id"), msg)
+    msg = f'''用户{message.raw_data.get("user_id")}{f"({card_old})" if card_old else ""}更改群昵称为{card_new}'''
+    bot.send_group_msg(message.raw_data.get("group_id"), MessageChain([msg]))
 
 # == 指令处理 ==
 

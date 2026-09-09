@@ -8,6 +8,7 @@ from OneBotConnecter.loger.log_info import error, log
 from src.config_reader.config_reader import read_bot_config
 from src.console.print_data import print_message
 from src.core.register import get_plugin_location, list_plugins
+from src.core import stats as stats_module
 from src.handle_message import handle_message
 
 def add_thread(oncall_function):
@@ -15,6 +16,7 @@ def add_thread(oncall_function):
     thread.run()
 
 def on_message(bot, message):
+    stats_module.record_upstream(message)  # 统计：接口上行 + 信息接收（心跳已在连接器层过滤）
     print_message(message)
     handle_message(bot, message)
 
@@ -52,6 +54,7 @@ def main():
     uri = config.get("uri", "ws://127.0.0.1:3001")
     owner = config.get("owner", [])
     bot = OneBot(url=uri, call_function=on_message, owner=owner)
+    stats_module.hook_send_to_server(bot)  # 统计：接口下行 + 信息发送（须在 run() 之前）
     load_plugin_listeners(bot=bot.handler.handler)
     bot.run()
 
