@@ -1,0 +1,4 @@
+{
+    "plugin_id": "tomori_ournotes",
+    "info": "音符(接入本地OurNotes后端,查询Our Notes谱面/歌曲/卡片/角色/卡池/活动/贴纸信息,车站车牌与交友)"
+}
